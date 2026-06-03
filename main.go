@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"socialnetwork/handlers" // ← this must match your module name in go.mod
-	"github.com/gorilla/websocket"
 )
 
 func main() {
@@ -33,6 +32,11 @@ func main() {
 	http.HandleFunc("/eventslistening", handlers.EventsListening)
 	http.HandleFunc("/goingresponce", handlers.GoingResponce)
 	http.HandleFunc("/notgoingresponce", handlers.NotGoingResponce)
+
+
+	///WEBSOCKET HANDLER 
+
+	http.HandleFunc("/ws", handlers.HandleWebSocket)
 
 
 	fmt.Println("socialnetwork server starting on :8080...")
