@@ -5,9 +5,14 @@ import (
 	"net/http"
 	"log"
 	"socialnetwork/handlers" // ← this must match your module name in go.mod
+	"socialnetwork/chats" 
+
 )
 
 func main() {
+
+	chats.Test()
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "socialnetwork server running on port 8080\n")
 	})
@@ -43,34 +48,37 @@ func main() {
 
 	//WEBSOCKET HUB 
 
-   	broadcastHub := handlers.NewHub()
+   	broadcastHub := chats.NewHub()
 	go broadcastHub.Run()
 
 	// Private chat hub (new)
-	privateHub := handlers.NewPrivateHub()
+	privateHub := chats.NewPrivateHub()
 	go privateHub.Run()
 
-	roomManager := handlers.NewRoomManager()
+	roomManager := chats.NewRoomManager()
 
 	// Broadcast endpoint
+	//////////////// wscat -c "ws://localhost:8080/broadcastchat ////////////////////////
+
 	http.HandleFunc("/broadcastchat", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ServeWs(broadcastHub, w, r)
+		chats.ServeWs(broadcastHub, w, r)
 	})
 
 	// Private chat endpoint
+	////////////////// wscat -c "ws://localhost:8080/privatechat  ////////////////////////
 	http.HandleFunc("/privatechat", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ServePrivateWs(privateHub, w, r)
+		chats.ServePrivateWs(privateHub, w, r)
 	})
 
 ///wscat -c "ws://localhost:8080/groupchat/general?username=alice" TESTING  GROUPCHAT
 		http.HandleFunc("/groupchat/", func(w http.ResponseWriter, r *http.Request) {
-		roomName := handlers.ExtractRoomName(r.URL.Path)
+		roomName := chats.ExtractRoomName(r.URL.Path)
 		if roomName == "" || roomName == "groupchat" {
 			http.Error(w, "Room name required. Use /groupchat/roomname", http.StatusBadRequest)
 			return
 		}
 		room := roomManager.GetOrCreateRoom(roomName)
-		handlers.ServeGroupWs(room, w, r)
+		chats.ServeGroupWs(room, w, r)
 	})
 
 	//////////////////////////////
