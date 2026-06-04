@@ -22,6 +22,6 @@ if [ ! -f "go.mod" ]; then
 fi
 
 # Download dependency
-
+go get github.com/mattn/go-sqlite3
 
 echo "Done."

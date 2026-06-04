@@ -2,10 +2,14 @@ package chats
 
 import (
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
-	"net/http"
+
+	"socialnetwork/dummydb"
+	"socialnetwork/handlers"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -35,13 +39,13 @@ func (h *GroupHub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			log.Printf("%s joined %s. Total: %d", client.username, h.roomName, len(h.clients))
+			log.Printf("%s joined %s. Total: %d", client.FirstName, h.roomName, len(h.clients))
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
-				log.Printf("%s left %s. Total: %d", client.username, h.roomName, len(h.clients))
+				log.Printf("%s left %s. Total: %d", client.FirstName, h.roomName, len(h.clients))
 			}
 
 		case message := <-h.broadcast:
@@ -57,16 +61,45 @@ func (h *GroupHub) Run() {
 	}
 }
 
-// GroupClient struct
+// GroupClient struct with user fields
 type GroupClient struct {
-	hub      *GroupHub
-	conn     *websocket.Conn
-	send     chan []byte
-	username string
-	room     string
+	hub       *GroupHub
+	conn      *websocket.Conn
+	send      chan []byte
+	ID        string
+	Email     string
+	FirstName string
+	LastName  string
+	room      string
 }
 
-// RoomManager
+// User struct for DB queries
+type GroupUser struct {
+	ID        string
+	Email     string
+	FirstName string
+	LastName  string
+}
+
+// GetGroupUserByID fetches user from database
+func GetGroupUserByID(userID string) (*GroupUser, error) {
+	var user GroupUser
+	err := dummydb.DB.QueryRow(
+		"SELECT id, email, first_name, last_name FROM users WHERE id = ?",
+		userID,
+	).Scan(
+		&user.ID,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// RoomManager creates and tracks all active rooms
 type RoomManager struct {
 	rooms map[string]*GroupHub
 	mu    sync.RWMutex
@@ -101,32 +134,41 @@ func ExtractRoomName(path string) string {
 	return ""
 }
 
-
 func ServeGroupWs(hub *GroupHub, w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		username = "anonymous"
-	}
-
-	conn, err := Upgrader.Upgrade(w, r, nil)
+	conn, err := handlers.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 
 	client := &GroupClient{
-		hub:      hub,
-		conn:     conn,
-		send:     make(chan []byte, 256),
-		username: username,
-		room:     hub.roomName,
+		hub:       hub,
+		conn:      conn,
+		send:      make(chan []byte, 256),
+		ID:        "anonymous",
+		Email:     "anon@example.com",
+		FirstName: "Anonymous",
+		LastName:  "User",
+		room:      hub.roomName,
 	}
+
+	// Optional: try to get user from DB if ID provided
+	userID := r.URL.Query().Get("user_id")
+	if userID != "" {
+		if dbUser, err := GetGroupUserByID(userID); err == nil {
+			client.ID = dbUser.ID
+			client.Email = dbUser.Email
+			client.FirstName = dbUser.FirstName
+			client.LastName = dbUser.LastName
+		}
+	}
+
+	log.Printf("User %s (%s %s) joined room %s", client.ID, client.FirstName, client.LastName, client.room)
 
 	client.hub.register <- client
 	go client.writePump()
 	go client.readPump()
 }
-
 
 func (c *GroupClient) readPump() {
 	defer func() {

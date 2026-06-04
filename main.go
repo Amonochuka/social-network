@@ -6,12 +6,14 @@ import (
 	"log"
 	"socialnetwork/handlers" // ← this must match your module name in go.mod
 	"socialnetwork/chats" 
+	"socialnetwork/dummydb"
 
 )
 
 func main() {
 
 	chats.Test()
+	dummydb.Init() 
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "socialnetwork server running on port 8080\n")
@@ -59,6 +61,8 @@ func main() {
 
 	// Broadcast endpoint
 	//////////////// wscat -c "ws://localhost:8080/broadcastchat ////////////////////////
+	///////////////////////     wscat -c "ws://localhost:8080/broadcastchat?user_id=user-1"
+ 
 
 	http.HandleFunc("/broadcastchat", func(w http.ResponseWriter, r *http.Request) {
 		chats.ServeWs(broadcastHub, w, r)
@@ -66,11 +70,15 @@ func main() {
 
 	// Private chat endpoint
 	////////////////// wscat -c "ws://localhost:8080/privatechat  ////////////////////////
+	/////////////////  wscat -c "ws://localhost:8080/privatechat?user_id=user-1"
+	////////////////// 
 	http.HandleFunc("/privatechat", func(w http.ResponseWriter, r *http.Request) {
 		chats.ServePrivateWs(privateHub, w, r)
 	})
 
-///wscat -c "ws://localhost:8080/groupchat/general?username=alice" TESTING  GROUPCHAT
+///  //wscat -c "ws://localhost:8080/groupchat/general" ///////////////////
+////// wscat -c "ws://localhost:8080/groupchat/general?user_id=user-1"
+
 		http.HandleFunc("/groupchat/", func(w http.ResponseWriter, r *http.Request) {
 		roomName := chats.ExtractRoomName(r.URL.Path)
 		if roomName == "" || roomName == "groupchat" {

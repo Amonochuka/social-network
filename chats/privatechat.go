@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"socialnetwork/dummydb"
+	"socialnetwork/handlers"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -16,11 +19,41 @@ type Message struct {
 	Content string `json:"content"`
 }
 
+// PrivateClient with user fields
 type PrivateClient struct {
-	hub      *PrivateHub
-	conn     *websocket.Conn
-	send     chan []byte
-	username string
+	hub       *PrivateHub
+	conn      *websocket.Conn
+	send      chan []byte
+	ID        string
+	Email     string
+	FirstName string
+	LastName  string
+}
+
+// PrivateUser for DB queries
+type PrivateUser struct {
+	ID        string
+	Email     string
+	FirstName string
+	LastName  string
+}
+
+// GetPrivateUserByID fetches user from database
+func GetPrivateUserByID(userID string) (*PrivateUser, error) {
+	var user PrivateUser
+	err := dummydb.DB.QueryRow(
+		"SELECT id, email, first_name, last_name FROM users WHERE id = ?",
+		userID,
+	).Scan(
+		&user.ID,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 type PrivateHub struct {
@@ -46,15 +79,15 @@ func (h *PrivateHub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			h.clientsByName[client.username] = client
-			log.Printf("%s joined. Total: %d", client.username, len(h.clients))
+			h.clientsByName[client.FirstName] = client
+			log.Printf("%s joined. Total: %d", client.FirstName, len(h.clients))
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				delete(h.clientsByName, client.username)
+				delete(h.clientsByName, client.FirstName)
 				close(client.send)
-				log.Printf("%s left. Total: %d", client.username, len(h.clients))
+				log.Printf("%s left. Total: %d", client.FirstName, len(h.clients))
 			}
 
 		case message := <-h.broadcast:
@@ -77,7 +110,7 @@ func (h *PrivateHub) Run() {
 					default:
 						close(client.send)
 						delete(h.clients, client)
-						delete(h.clientsByName, client.username)
+						delete(h.clientsByName, client.FirstName)
 					}
 				}
 			}
@@ -146,23 +179,34 @@ func (c *PrivateClient) writePump() {
 }
 
 func ServePrivateWs(hub *PrivateHub, w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		username = "anonymous"
-	}
-
-	conn, err := Upgrader.Upgrade(w, r, nil)
+	conn, err := handlers.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 
 	client := &PrivateClient{
-		hub:      hub,
-		conn:     conn,
-		send:     make(chan []byte, 256),
-		username: username,
+		hub:       hub,
+		conn:      conn,
+		send:      make(chan []byte, 256),
+		ID:        "anonymous",
+		Email:     "anon@example.com",
+		FirstName: "Anonymous",
+		LastName:  "User",
 	}
+
+	// Optional: try to get user from DB if ID provided
+	userID := r.URL.Query().Get("user_id")
+	if userID != "" {
+		if dbUser, err := GetPrivateUserByID(userID); err == nil {
+			client.ID = dbUser.ID
+			client.Email = dbUser.Email
+			client.FirstName = dbUser.FirstName
+			client.LastName = dbUser.LastName
+		}
+	}
+
+	log.Printf("User %s (%s %s) joined private chat", client.ID, client.FirstName, client.LastName)
 
 	client.hub.register <- client
 	go client.writePump()
