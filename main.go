@@ -42,14 +42,23 @@ func main() {
 
 	//WEBSOCKET HUB 
 
-	hub := handlers.NewHub()
-	go hub.Run()
+   	broadcastHub := handlers.NewHub()
+	go broadcastHub.Run()
 
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ServeWs(hub, w, r)
+	// Private chat hub (new)
+	privateHub := handlers.NewPrivateHub()
+	go privateHub.Run()
+
+	// Broadcast endpoint
+	http.HandleFunc("/broadcastchat", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ServeWs(broadcastHub, w, r)
 	})
 
-
+	// Private chat endpoint
+	http.HandleFunc("/privatechat", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ServePrivateWs(privateHub, w, r)
+	})
+	//////////////////////////////
 
 	fmt.Println("socialnetwork server starting on :8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
