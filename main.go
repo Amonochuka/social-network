@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"log"
 	"socialnetwork/handlers" // ← this must match your module name in go.mod
 )
 
@@ -49,6 +50,8 @@ func main() {
 	privateHub := handlers.NewPrivateHub()
 	go privateHub.Run()
 
+	roomManager := handlers.NewRoomManager()
+
 	// Broadcast endpoint
 	http.HandleFunc("/broadcastchat", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ServeWs(broadcastHub, w, r)
@@ -58,8 +61,22 @@ func main() {
 	http.HandleFunc("/privatechat", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ServePrivateWs(privateHub, w, r)
 	})
-	//////////////////////////////
 
+///wscat -c "ws://localhost:8080/groupchat/general?username=alice" TESTING  GROUPCHAT
+		http.HandleFunc("/groupchat/", func(w http.ResponseWriter, r *http.Request) {
+		roomName := handlers.ExtractRoomName(r.URL.Path)
+		if roomName == "" || roomName == "groupchat" {
+			http.Error(w, "Room name required. Use /groupchat/roomname", http.StatusBadRequest)
+			return
+		}
+		room := roomManager.GetOrCreateRoom(roomName)
+		handlers.ServeGroupWs(room, w, r)
+	})
+
+	//////////////////////////////
+	log.Println("Broadcast: /broadcastchat")
+	log.Println("Private: /privatechat")
+	log.Println("Group: /groupchat/roomname")
 	fmt.Println("socialnetwork server starting on :8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Printf("Server failed: %v\n", err)
