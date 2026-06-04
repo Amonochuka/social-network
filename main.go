@@ -34,9 +34,21 @@ func main() {
 	http.HandleFunc("/notgoingresponce", handlers.NotGoingResponce)
 
 
-	///WEBSOCKET HANDLER 
+	/*//WEBSOCKET HANDLER 
+	//TESTING WEBSOCKETS 
 
 	http.HandleFunc("/ws", handlers.HandleWebSocket)
+    */
+
+	//WEBSOCKET HUB 
+
+	hub := handlers.NewHub()
+	go hub.Run()
+
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ServeWs(hub, w, r)
+	})
+
 
 
 	fmt.Println("socialnetwork server starting on :8080...")
