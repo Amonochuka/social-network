@@ -9,6 +9,10 @@ import (
 	"socialnetwork/handlers"
 )
 
+func generateID() string {
+    return time.Now().Format("20060102150405.000000")
+}
+
 // Hub maintains the set of active clients and broadcasts messages
 type Hub struct {
 	clients    map[*Client]bool   // registered clients
@@ -63,14 +67,17 @@ func (h *Hub) Run() {
 
 // Client represents a single WebSocket connection
 type Client struct {
-	hub       *Hub
-	conn      *websocket.Conn
-	send      chan []byte
-	ID        string
-	Email     string
-	FirstName string
-	LastName  string
+    hub       *Hub
+    conn      *websocket.Conn
+    send      chan []byte
+
+    ID        string
+    GroupID   string   // ADD THIS
+    Email     string
+    FirstName string
+    LastName  string
 }
+
 
 type User struct {
 	ID        string
@@ -102,6 +109,20 @@ func GetUserByID(userID string) (*User, error) {
 
 // readPump reads messages from the WebSocket connection to the hub
 func (c *Client) readPump() {
+
+	db := dummydb.DB;
+
+	stmt, err := db.Prepare(`
+    INSERT INTO group_messages (id, group_id, sender_id, content)
+    VALUES (?, ?, ?, ?)
+`)
+if err != nil {
+    log.Fatal(err)
+}
+defer stmt.Close()
+
+
+
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -123,6 +144,20 @@ func (c *Client) readPump() {
 			break
 		}
 		c.hub.broadcast <- message
+		////////INSERT SYNTAX ////////////
+		    // INSERT INTO SQLITE
+    _, err = stmt.Exec(
+        generateID(),      // message id (you must implement)
+        c.GroupID,         // group id
+        c.ID,          // sender id
+        string(message),   // content
+    )
+
+    if err != nil {
+        log.Printf("DB insert error: %v", err)
+    }
+
+		
 	}
 }
 
