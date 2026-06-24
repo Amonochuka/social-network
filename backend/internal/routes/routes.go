@@ -70,6 +70,37 @@ func RegisterWSRoutes(
 ) {
 	auth := middleware.NewAuthMiddleware(sessionService)
 
+	// ── 1. HTTP HISTORY ENDPOINTS ───────────────────────────────────────────
+
+	// GET /api/chat/private/{userId} - Fetches direct messaging logs
+	mux.Handle("/api/chat/private/{id}", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		senderID := middleware.GetUserID(r)
+		targetUserID := r.PathValue("id") // Extract path parameter natively
+
+		history, err := msgSvc.GetPrivateHistory(senderID, targetUserID)
+		if err != nil {
+			http.Error(w, "Failed to retrieve chat history", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(history)
+	})))
+
+	// GET /api/chat/group/{groupId} - Fetches community room logs
+	mux.Handle("/api/chat/group/{id}", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		groupID := r.PathValue("id")
+
+		history, err := msgSvc.GetGroupHistory(groupID)
+		if err != nil {
+			http.Error(w, "Failed to retrieve group history", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(history)
+	})))
+
+	// ── 2. REAL-TIME CHAT WEBSOCKET ENDPOINT ─────────────────────────────────
+
 	mux.Handle("/ws", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := middleware.GetUserID(r)
 		if userID == "" {
@@ -85,14 +116,12 @@ func RegisterWSRoutes(
 				hub.UnregisterPrivate(userID)
 			},
 			func(msg []byte) {
-				// 1. Parse the outer framework shell
 				var frame models.WSMessageFrame
 				if err := json.Unmarshal(msg, &frame); err != nil {
 					log.Printf("Malformed WS envelope error: %v", err)
 					return
 				}
 
-				// 2. Route payload according to type specification
 				switch frame.Type {
 				case "private_chat":
 					var chat models.PrivateChatPayload
@@ -101,22 +130,18 @@ func RegisterWSRoutes(
 						return
 					}
 
-					// Persist to database utilizing your business rule validation
 					savedMsg, err := msgSvc.SendPrivateMessage(userID, chat.ReceiverID, chat.Content)
 					if err != nil {
 						log.Printf("Business logic chat rejection: %v", err)
 						return
 					}
 
-					// Serialize saved record back to JSON for transmission
 					outboundPayload, _ := json.Marshal(map[string]interface{}{
 						"type":    "private_chat",
 						"payload": savedMsg,
 					})
 
-					// Deliver to recipient real-time via Hub registry
 					hub.SendToUser(chat.ReceiverID, outboundPayload)
-					// Echo back to sender to confirm successful delivery status
 					hub.SendToUser(userID, outboundPayload)
 
 				case "group_chat":
@@ -126,7 +151,12 @@ func RegisterWSRoutes(
 						return
 					}
 
-					// Persist to database utilizing group validation criteria
+					// Dynamic Group Sub-registration: Link client to the group room map if missing
+					// This ensures the client receives subsequent messages via BroadcastToGroup
+					ws.ServeWS(w, r, func(client *ws.Client) {
+						hub.RegisterGroup(group.GroupID, client)
+					}, func() {}, func(msg []byte) {})
+
 					savedMsg, err := msgSvc.SendGroupMessage(userID, group.GroupID, group.Content)
 					if err != nil {
 						log.Printf("Business logic group rejection: %v", err)
@@ -138,12 +168,40 @@ func RegisterWSRoutes(
 						"payload": savedMsg,
 					})
 
-					// Dispatch transmission dynamically to all active members in the room
 					hub.BroadcastToGroup(group.GroupID, outboundPayload)
 
 				default:
 					log.Printf("Unhandled WebSocket transmission packet frame type: %s", frame.Type)
 				}
+			},
+		)
+	})))
+
+	// ── 3. REAL-TIME NOTIFICATIONS WEBSOCKET ENDPOINT ───────────────────────
+
+	mux.Handle("/ws/notifications", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := middleware.GetUserID(r)
+		if userID == "" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Connect notification socket pipe with a dedicated event channel loop
+		ws.ServeWS(w, r,
+			func(client *ws.Client) {
+				// Registers inside your explicit hub.go map signature 'notifClients'
+				hub.RegisterNotif(userID, client)
+				log.Printf("Notification socket registered for user: %s", userID)
+			},
+			func() {
+				// Cleans up the map allocation completely when browser drops connection
+				hub.UnregisterNotif(userID)
+				log.Printf("Notification socket terminated for user: %s", userID)
+			},
+			func(msg []byte) {
+				// Notification sockets primarily receive outbound data from the server.
+				// However, if the client sends an acknowledgment frame, we process it here.
+				log.Printf("Received notification frame payload from client: %s", string(msg))
 			},
 		)
 	})))

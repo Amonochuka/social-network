@@ -28,11 +28,14 @@ func New() (*App, error) {
 		return nil, err
 	}
 
+	// 1.5. Real-time engine instantiation (Moved up to satisfy dependency injection)
+	hub := ws.NewHub()
+
 	// 2. repos
 	userRepo := repoSqlite.NewUserRepository(db)
 	sessionRepo := repoSqlite.NewSessionRepository(db)
 	followerRepo := repoSqlite.NewFollowerRepository(db)
-	notificationRepo := repoSqlite.NewNotificationRepository(db)
+	notificationRepo := repoSqlite.NewNotificationRepository(db, hub) // Hub injected here
 	postRepo := repoSqlite.NewPostRepository(db)
 	messageRepo := repoSqlite.NewMessageRepository(db)
 
@@ -43,9 +46,6 @@ func New() (*App, error) {
 	postService := services.NewPostService(postRepo, followerRepo, notificationRepo, userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
 	messageService := services.NewMessageService(messageRepo, followerRepo)
-
-	// 4. hub
-	hub := ws.NewHub()
 
 	// 5. handlers
 	authHandler := handlers.NewAuthHandler(userService, sessionService)
