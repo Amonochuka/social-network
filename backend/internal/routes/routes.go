@@ -57,3 +57,19 @@ func Register(
 	mux.Handle("/api/notifications", authWithSession(http.HandlerFunc(notificationHandler.GetNotifications)))
 	mux.Handle("/api/notifications/{notification_id}/read", authWithSession(http.HandlerFunc(notificationHandler.MarkAsRead)))
 }
+func RegisterWSRoutes(
+	mux *http.ServeMux,
+	wsHandler *handlers.WSHandler,
+	sessionService *services.SessionService,
+) {
+	auth := middleware.AuthMiddleware(sessionService)
+
+	// /ws/chat/{userId}   — private 1-to-1 chat
+	mux.Handle("/ws/chat/", auth(http.HandlerFunc(wsHandler.ServePrivateChat)))
+
+	// /ws/group/{groupId} — group chat
+	mux.Handle("/ws/group/", auth(http.HandlerFunc(wsHandler.ServeGroupChat)))
+
+	// /ws/notifications   — real-time notification push
+	mux.Handle("/ws/notifications", auth(http.HandlerFunc(wsHandler.ServeNotifications)))
+}

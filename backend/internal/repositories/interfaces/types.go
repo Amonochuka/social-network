@@ -52,3 +52,17 @@ type PostRepository interface {
 	CreateComment(comment *models.Comment) error
 	GetCommentsByPostID(postID string) ([]*models.Comment, error)
 }
+
+// MessageRepository handles persistence for both private and group messages.
+type MessageRepository interface {
+	// Private messages
+	SavePrivateMessage(msg *models.PrivateMessage) error
+	GetPrivateMessages(userA, userB string, limit int) ([]*models.PrivateMessage, error)
+
+	// Group messages
+	SaveGroupMessage(msg *models.GroupMessage) error
+	GetGroupMessages(groupID string, limit int) ([]*models.GroupMessage, error)
+
+	// Group membership check (groups table owned by Dev 4)
+	IsGroupMember(userID, groupID string) (bool, error)
+}
