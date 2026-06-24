@@ -38,9 +38,13 @@ func NewClient(conn *websocket.Conn) *Client {
 }
 
 // ServeWS handles incoming HTTP requests initiating WebSocket upgrade protocol.
-// ServeWS handles incoming HTTP requests initiating WebSocket upgrade protocol.
-// ServeWS handles incoming HTTP requests initiating WebSocket upgrade protocol.
-func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, onMessage func(msg []byte)) {
+func ServeWS(
+	w http.ResponseWriter,
+	r *http.Request,
+	onConnect func(c *Client),
+	onDisconnect func(),
+	onMessage func(msg []byte),
+) {
 	conn, err := Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Failed to upgrade connection: %v", err)
@@ -49,11 +53,14 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, onMessage func(ms
 
 	client := NewClient(conn)
 
+	// Trigger the hook to register this client inside our Hub maps
+	onConnect(client)
+
 	// Spin up concurrent loops for managing data traffic.
 	go client.WritePump()
 
-	// Pass the message back out cleanly to whatever handler invoked it
-	go client.ReadPump(onMessage)
+	// Pass the message and unregister hooks into the processing loop
+	go client.ReadPump(onDisconnect, onMessage)
 }
 
 func (c *Client) WritePumpOnce(msg []byte) {
@@ -94,8 +101,11 @@ func (c *Client) WritePump() {
 	}
 }
 
-func (c *Client) ReadPump(msgHandler func([]byte)) {
-	defer c.conn.Close()
+func (c *Client) ReadPump(onDisconnect func(), msgHandler func([]byte)) {
+	defer func() {
+		onDisconnect() // Trigger the hook to remove client from Hub maps on exit
+		c.conn.Close()
+	}()
 	c.conn.SetReadLimit(maxMsgSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {

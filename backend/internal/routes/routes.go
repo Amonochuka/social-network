@@ -1,10 +1,12 @@
 package routes
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
+	"social-network/backend/internal/models"
 	"social-network/backend/internal/services"
 	"social-network/backend/internal/ws"
 )
@@ -69,12 +71,80 @@ func RegisterWSRoutes(
 	auth := middleware.NewAuthMiddleware(sessionService)
 
 	mux.Handle("/ws", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// We wire the message service logic directly inside this boundary layer callback
-		ws.ServeWS(hub, w, r, func(msg []byte) {
-			// Log it or execute business rules without breaking compilation boundaries
-			log.Printf("Route handler intercept: %s", string(msg))
+		userID := middleware.GetUserID(r)
+		if userID == "" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 
-			// Example: msgSvc.SendPrivateMessage(sender, receiver, string(msg))
-		})
+		ws.ServeWS(w, r,
+			func(client *ws.Client) {
+				hub.RegisterPrivate(userID, client)
+			},
+			func() {
+				hub.UnregisterPrivate(userID)
+			},
+			func(msg []byte) {
+				// 1. Parse the outer framework shell
+				var frame models.WSMessageFrame
+				if err := json.Unmarshal(msg, &frame); err != nil {
+					log.Printf("Malformed WS envelope error: %v", err)
+					return
+				}
+
+				// 2. Route payload according to type specification
+				switch frame.Type {
+				case "private_chat":
+					var chat models.PrivateChatPayload
+					if err := json.Unmarshal(frame.Payload, &chat); err != nil {
+						log.Printf("Invalid private payload structure: %v", err)
+						return
+					}
+
+					// Persist to database utilizing your business rule validation
+					savedMsg, err := msgSvc.SendPrivateMessage(userID, chat.ReceiverID, chat.Content)
+					if err != nil {
+						log.Printf("Business logic chat rejection: %v", err)
+						return
+					}
+
+					// Serialize saved record back to JSON for transmission
+					outboundPayload, _ := json.Marshal(map[string]interface{}{
+						"type":    "private_chat",
+						"payload": savedMsg,
+					})
+
+					// Deliver to recipient real-time via Hub registry
+					hub.SendToUser(chat.ReceiverID, outboundPayload)
+					// Echo back to sender to confirm successful delivery status
+					hub.SendToUser(userID, outboundPayload)
+
+				case "group_chat":
+					var group models.GroupChatPayload
+					if err := json.Unmarshal(frame.Payload, &group); err != nil {
+						log.Printf("Invalid group payload structure: %v", err)
+						return
+					}
+
+					// Persist to database utilizing group validation criteria
+					savedMsg, err := msgSvc.SendGroupMessage(userID, group.GroupID, group.Content)
+					if err != nil {
+						log.Printf("Business logic group rejection: %v", err)
+						return
+					}
+
+					outboundPayload, _ := json.Marshal(map[string]interface{}{
+						"type":    "group_chat",
+						"payload": savedMsg,
+					})
+
+					// Dispatch transmission dynamically to all active members in the room
+					hub.BroadcastToGroup(group.GroupID, outboundPayload)
+
+				default:
+					log.Printf("Unhandled WebSocket transmission packet frame type: %s", frame.Type)
+				}
+			},
+		)
 	})))
 }

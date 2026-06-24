@@ -92,13 +92,16 @@ func (h *Hub) SendToUser(userID string, payload []byte) {
 	}
 }
 
-// BroadcastToGroup delivers a JSON payload to every client in a group.
+// BroadcastToGroup delivers a JSON payload to every client in a group safely.
+// BroadcastToGroup delivers a JSON payload to every client in a group safely.
 func (h *Hub) BroadcastToGroup(groupID string, payload []byte) {
 	h.mu.RLock()
-	members := h.groupClients[groupID]
-	h.mu.RUnlock()
-	for c := range members {
-		c.send(payload)
+	defer h.mu.RUnlock() // Lock stays active until the loop finishes completely
+
+	if members, ok := h.groupClients[groupID]; ok {
+		for c := range members {
+			c.send(payload)
+		}
 	}
 }
 
