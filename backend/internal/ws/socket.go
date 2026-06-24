@@ -2,6 +2,7 @@ package ws
 
 import (
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,6 +15,16 @@ const (
 	maxMsgSize = 4096
 )
 
+// Upgrader configures how HTTP connections are migrated to WebSockets.
+var Upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		// Allow all connections for local development. Modify for production security.
+		return true
+	},
+}
+
 type Client struct {
 	conn     *websocket.Conn
 	outbound chan []byte
@@ -24,6 +35,25 @@ func NewClient(conn *websocket.Conn) *Client {
 		conn:     conn,
 		outbound: make(chan []byte, 256),
 	}
+}
+
+// ServeWS handles incoming HTTP requests initiating WebSocket upgrade protocol.
+// ServeWS handles incoming HTTP requests initiating WebSocket upgrade protocol.
+// ServeWS handles incoming HTTP requests initiating WebSocket upgrade protocol.
+func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, onMessage func(msg []byte)) {
+	conn, err := Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade connection: %v", err)
+		return
+	}
+
+	client := NewClient(conn)
+
+	// Spin up concurrent loops for managing data traffic.
+	go client.WritePump()
+
+	// Pass the message back out cleanly to whatever handler invoked it
+	go client.ReadPump(onMessage)
 }
 
 func (c *Client) WritePumpOnce(msg []byte) {

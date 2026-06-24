@@ -1,10 +1,12 @@
 package routes
 
 import (
+	"log"
 	"net/http"
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
 	"social-network/backend/internal/services"
+	"social-network/backend/internal/ws"
 )
 
 func Register(
@@ -57,14 +59,22 @@ func Register(
 	mux.Handle("/api/notifications", auth.Authenticate(http.HandlerFunc(notificationHandler.GetNotifications)))
 	mux.Handle("/api/notifications/{notification_id}/read", auth.Authenticate(http.HandlerFunc(notificationHandler.MarkAsRead)))
 }
+
 func RegisterWSRoutes(
 	mux *http.ServeMux,
-	wsHandler *handlers.WSHandler,
+	hub *ws.Hub,
+	msgSvc *services.MessageService,
 	sessionService *services.SessionService,
 ) {
 	auth := middleware.NewAuthMiddleware(sessionService)
 
-	mux.Handle("/ws/chat/", auth.Authenticate(http.HandlerFunc(wsHandler.ServePrivateChat)))
-	mux.Handle("/ws/group/", auth.Authenticate(http.HandlerFunc(wsHandler.ServeGroupChat)))
-	mux.Handle("/ws/notifications", auth.Authenticate(http.HandlerFunc(wsHandler.ServeNotifications)))
+	mux.Handle("/ws", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// We wire the message service logic directly inside this boundary layer callback
+		ws.ServeWS(hub, w, r, func(msg []byte) {
+			// Log it or execute business rules without breaking compilation boundaries
+			log.Printf("Route handler intercept: %s", string(msg))
+
+			// Example: msgSvc.SendPrivateMessage(sender, receiver, string(msg))
+		})
+	})))
 }

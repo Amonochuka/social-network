@@ -4,16 +4,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"social-network/backend/internal/handlers"
+	"social-network/backend/internal/middleware"
 	repoSqlite "social-network/backend/internal/repositories/sqlite"
 	"social-network/backend/internal/routes"
 	"social-network/backend/internal/services"
-	"social-network/backend/internal/middleware"
+	"social-network/backend/internal/ws"
 	dbSqlite "social-network/backend/pkg/db/sqlite"
 )
 
 type App struct {
 	Router *http.ServeMux
+	Hub    *ws.Hub
 }
 
 func New() (*App, error) {
@@ -31,6 +34,7 @@ func New() (*App, error) {
 	followerRepo := repoSqlite.NewFollowerRepository(db)
 	notificationRepo := repoSqlite.NewNotificationRepository(db)
 	postRepo := repoSqlite.NewPostRepository(db)
+	messageRepo := repoSqlite.NewMessageRepository(db)
 
 	// 3. services
 	userService := services.NewUserService(userRepo, followerRepo)
@@ -38,21 +42,25 @@ func New() (*App, error) {
 	followerService := services.NewFollowerService(followerRepo, userRepo, notificationRepo)
 	postService := services.NewPostService(postRepo, followerRepo, notificationRepo, userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
-	// 4. handlers
+	messageService := services.NewMessageService(messageRepo, followerRepo)
+
+	// 4. hub
+	hub := ws.NewHub()
+
+	// 5. handlers
 	authHandler := handlers.NewAuthHandler(userService, sessionService)
 	followerHandler := handlers.NewFollowerHandler(followerService)
 	postHandler := handlers.NewPostHandler(postService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 
-	// 5. routes
+	// 6. routes
 	mux := http.NewServeMux()
-	
 	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, sessionService)
+	routes.RegisterWSRoutes(mux, hub, messageService, sessionService)
+
 	log.Println("app initialised")
-
-	return &App{Router: mux}, nil
+	return &App{Router: mux, Hub: hub}, nil
 }
-
 
 func (a *App) ChainMiddlewares() http.Handler {
 	nextMiddleware := middleware.ChainMiddlewares(

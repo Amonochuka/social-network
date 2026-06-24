@@ -2,7 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
-	"social-network/internal/models"
+	"social-network/backend/internal/models"
 	"time"
 
 	"github.com/google/uuid"

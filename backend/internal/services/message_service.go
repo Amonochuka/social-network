@@ -2,8 +2,8 @@ package services
 
 import (
 	"errors"
-	"social-network/internal/models"
-	"social-network/internal/repositories/interfaces"
+	"social-network/backend/internal/models"
+	"social-network/backend/internal/repositories/interfaces"
 )
 
 // MessageService enforces business rules before touching the database.
