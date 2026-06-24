@@ -15,7 +15,7 @@ func Register(
 	notificationHandler *handlers.NotificationHandler,
 	sessionService *services.SessionService,
 ) {
-	authWithSession := middleware.AuthMiddleware(sessionService)
+	auth := middleware.NewAuthMiddleware(sessionService)
 
 	// Health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -29,47 +29,42 @@ func Register(
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
 
 	// Private Profile Routes
-	mux.Handle("/api/auth/me", authWithSession(http.HandlerFunc(authHandler.Me)))
-	mux.Handle("/api/profile/{id}", authWithSession(http.HandlerFunc(authHandler.GetProfile)))
-	mux.Handle("/api/profile", authWithSession(http.HandlerFunc(authHandler.UpdateProfile)))
-	mux.Handle("/api/profile/privacy", authWithSession(http.HandlerFunc(authHandler.UpdatePrivacy)))
-	mux.Handle("/api/profile/avatar", authWithSession(http.HandlerFunc(authHandler.UploadAvatar)))
+	mux.Handle("/api/auth/me", auth.Authenticate(http.HandlerFunc(authHandler.Me)))
+	mux.Handle("/api/profile/{id}", auth.Authenticate(http.HandlerFunc(authHandler.GetProfile)))
+	mux.Handle("/api/profile", auth.Authenticate(http.HandlerFunc(authHandler.UpdateProfile)))
+	mux.Handle("/api/profile/privacy", auth.Authenticate(http.HandlerFunc(authHandler.UpdatePrivacy)))
+	mux.Handle("/api/profile/avatar", auth.Authenticate(http.HandlerFunc(authHandler.UploadAvatar)))
 
 	// Private Follower Routes
-	mux.Handle("/api/follow/requests", authWithSession(http.HandlerFunc(followerHandler.SendFollowRequest)))
-	mux.Handle("/api/follow/requests/{request_id}/accept", authWithSession(http.HandlerFunc(followerHandler.AcceptFollowRequest)))
-	mux.Handle("/api/follow/requests/{request_id}/decline", authWithSession(http.HandlerFunc(followerHandler.DeclineFollowRequest)))
-	mux.Handle("/api/follow/{user_id}", authWithSession(http.HandlerFunc(followerHandler.Unfollow)))
-	mux.Handle("/api/followers", authWithSession(http.HandlerFunc(followerHandler.GetFollowers)))
-	mux.Handle("/api/following", authWithSession(http.HandlerFunc(followerHandler.GetFollowing)))
+	mux.Handle("/api/follow/requests", auth.Authenticate(http.HandlerFunc(followerHandler.SendFollowRequest)))
+	mux.Handle("/api/follow/requests/{request_id}/accept", auth.Authenticate(http.HandlerFunc(followerHandler.AcceptFollowRequest)))
+	mux.Handle("/api/follow/requests/{request_id}/decline", auth.Authenticate(http.HandlerFunc(followerHandler.DeclineFollowRequest)))
+	mux.Handle("/api/follow/{user_id}", auth.Authenticate(http.HandlerFunc(followerHandler.Unfollow)))
+	mux.Handle("/api/followers", auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowers)))
+	mux.Handle("/api/following", auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowing)))
 
 	// Private Post Routes
-	mux.Handle("/api/posts", authWithSession(http.HandlerFunc(postHandler.CreatePost)))
-	mux.Handle("/api/posts/feed", authWithSession(http.HandlerFunc(postHandler.GetFeed)))
-	mux.Handle("/api/posts/{post_id}", authWithSession(http.HandlerFunc(postHandler.GetPostByID)))
-	mux.Handle("/api/posts/{post_id}/update", authWithSession(http.HandlerFunc(postHandler.UpdatePost)))
-	mux.Handle("/api/posts/{post_id}/delete", authWithSession(http.HandlerFunc(postHandler.DeletePost)))
-	mux.Handle("/api/users/{user_id}/posts", authWithSession(http.HandlerFunc(postHandler.GetPostsByUserID)))
-	mux.Handle("/api/posts/{post_id}/comments", authWithSession(http.HandlerFunc(postHandler.CreateComment)))
-	mux.Handle("/api/posts/{post_id}/comments/all", authWithSession(http.HandlerFunc(postHandler.GetCommentsByPostID)))
+	mux.Handle("/api/posts", auth.Authenticate(http.HandlerFunc(postHandler.CreatePost)))
+	mux.Handle("/api/posts/feed", auth.Authenticate(http.HandlerFunc(postHandler.GetFeed)))
+	mux.Handle("/api/posts/{post_id}", auth.Authenticate(http.HandlerFunc(postHandler.GetPostByID)))
+	mux.Handle("/api/posts/{post_id}/update", auth.Authenticate(http.HandlerFunc(postHandler.UpdatePost)))
+	mux.Handle("/api/posts/{post_id}/delete", auth.Authenticate(http.HandlerFunc(postHandler.DeletePost)))
+	mux.Handle("/api/users/{user_id}/posts", auth.Authenticate(http.HandlerFunc(postHandler.GetPostsByUserID)))
+	mux.Handle("/api/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(postHandler.CreateComment)))
+	mux.Handle("/api/posts/{post_id}/comments/all", auth.Authenticate(http.HandlerFunc(postHandler.GetCommentsByPostID)))
 
 	// Private Notification Routes
-	mux.Handle("/api/notifications", authWithSession(http.HandlerFunc(notificationHandler.GetNotifications)))
-	mux.Handle("/api/notifications/{notification_id}/read", authWithSession(http.HandlerFunc(notificationHandler.MarkAsRead)))
+	mux.Handle("/api/notifications", auth.Authenticate(http.HandlerFunc(notificationHandler.GetNotifications)))
+	mux.Handle("/api/notifications/{notification_id}/read", auth.Authenticate(http.HandlerFunc(notificationHandler.MarkAsRead)))
 }
 func RegisterWSRoutes(
 	mux *http.ServeMux,
 	wsHandler *handlers.WSHandler,
 	sessionService *services.SessionService,
 ) {
-	auth := middleware.AuthMiddleware(sessionService)
+	auth := middleware.NewAuthMiddleware(sessionService)
 
-	// /ws/chat/{userId}   — private 1-to-1 chat
-	mux.Handle("/ws/chat/", auth(http.HandlerFunc(wsHandler.ServePrivateChat)))
-
-	// /ws/group/{groupId} — group chat
-	mux.Handle("/ws/group/", auth(http.HandlerFunc(wsHandler.ServeGroupChat)))
-
-	// /ws/notifications   — real-time notification push
-	mux.Handle("/ws/notifications", auth(http.HandlerFunc(wsHandler.ServeNotifications)))
+	mux.Handle("/ws/chat/", auth.Authenticate(http.HandlerFunc(wsHandler.ServePrivateChat)))
+	mux.Handle("/ws/group/", auth.Authenticate(http.HandlerFunc(wsHandler.ServeGroupChat)))
+	mux.Handle("/ws/notifications", auth.Authenticate(http.HandlerFunc(wsHandler.ServeNotifications)))
 }

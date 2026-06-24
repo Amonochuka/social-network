@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"fmt"
 	"path/filepath"
 	"social-network/backend/internal/middleware"
 	"social-network/backend/internal/models"
@@ -43,6 +44,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.Register(&req)
 	if err != nil {
+		fmt.Println(err, "error adding to users table")
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
@@ -109,7 +111,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	})
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(models.UserResponse{
 		ID:          user.ID,
