@@ -10,7 +10,6 @@ type contextKey string
 
 const UserIDKey contextKey = "user_id"
 
-type Middleware func(http.Handler) http.Handler
 
 type AuthMiddleware struct {
 	sessionService *services.SessionService
@@ -42,13 +41,7 @@ func (m *AuthMiddleware) Authenticate(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// ChainMiddlewares chains multiple middlewares together
-func ChainMiddlewares(handler http.Handler, middlewares ...Middleware) http.Handler {
-	for i := len(middlewares) - 1; i >= 0; i-- {
-		handler = middlewares[i](handler)
-	}
-	return handler
-}
+
 
 // OptionalAuth is a middleware that optionally validates the session
 func (m *AuthMiddleware) OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
@@ -66,22 +59,7 @@ func (m *AuthMiddleware) OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// CORSMiddleware adds CORS headers
-func CORSMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		
-		next.ServeHTTP(w, r)
-	})
-}
+
 
 // LoggingMiddleware logs incoming requests
 func LoggingMiddleware(next http.Handler) http.Handler {

@@ -13,6 +13,7 @@ func Register(
 	followerHandler *handlers.FollowerHandler,
 	postHandler *handlers.PostHandler,
 	notificationHandler *handlers.NotificationHandler,
+	oauthHandler *handlers.OAuthHandler,
 	sessionService *services.SessionService,
 ) {
 	auth := middleware.NewAuthMiddleware(sessionService)
@@ -27,6 +28,10 @@ func Register(
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
+
+	// Google OAuth Routes
+	mux.HandleFunc("/api/auth/google", oauthHandler.GoogleLogin)
+	mux.HandleFunc("/api/auth/google/callback", oauthHandler.GoogleCallback)
 
 	// Private Profile Routes
 	mux.Handle("/api/auth/me", auth.Authenticate(http.HandlerFunc(authHandler.Me)))
