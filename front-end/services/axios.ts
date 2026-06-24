@@ -1,13 +1,11 @@
 import loadEnvFile from "@/config/config";
 import axios from "axios";
-import { getAccessToken } from "./token";
 
-
-export const config = loadEnvFile({ urlType: "baseUrl" })
+export const config = loadEnvFile({ urlType: "baseUrl" });
 
 export const Api = axios.create({
     baseURL: config.baseUrl,
-    withCredentials: true,
+    withCredentials: true, // sends the session_id cookie automatically
     headers: {
         "Content-Type": "application/json",
     },

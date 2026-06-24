@@ -8,7 +8,6 @@ import { Camera } from "lucide-react";
 import { useAppDispatch } from "@/store/hooks";
 import { registerUser } from "@/store/features/authSlice";
 
-
 interface Props {
   setRegister: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -29,19 +28,41 @@ export default function RegisterUI({ setRegister }: Props) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const form = new FormData(e.currentTarget);
+    const form = e.currentTarget;
 
-    const fileInput = document.querySelector(
-      'input[name="userProfile"]'
-    ) as HTMLInputElement;
+    const payload = {
+      email: (form.elements.namedItem("emailAddr") as HTMLInputElement).value,
+      password: (form.elements.namedItem("password") as HTMLInputElement).value,
+      first_name: (form.elements.namedItem("firstName") as HTMLInputElement).value,
+      last_name: (form.elements.namedItem("secondName") as HTMLInputElement).value,
+      date_of_birth: (form.elements.namedItem("dateOfBirth") as HTMLInputElement).value,
+      nickname: (form.elements.namedItem("nickName") as HTMLInputElement).value,
+      about_me: about,
+    };
 
-    if (fileInput?.files?.[0]) {
-      form.append("avatar", fileInput.files[0]);
-    }
-
-    const result = await dispatch(registerUser(form));
+    const result = await dispatch(registerUser(payload));
 
     if (registerUser.fulfilled.match(result)) {
+      // avatar upload happens as a separate step after registration succeeds,
+      // since the backend's register endpoint doesn't accept file uploads
+      const fileInput = document.querySelector(
+        'input[name="userProfile"]'
+      ) as HTMLInputElement;
+
+      if (fileInput?.files?.[0]) {
+        const avatarForm = new FormData();
+        avatarForm.append("avatar", fileInput.files[0]);
+
+        const { Api } = await import("@/services/axios");
+        try {
+          await Api.post("/profile/avatar", avatarForm, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } catch (err) {
+          console.error("Avatar upload failed:", err);
+        }
+      }
+
       console.log("Registered:", result.payload);
       setRegister(false);
     }
@@ -107,6 +128,7 @@ export default function RegisterUI({ setRegister }: Props) {
                   type="date"
                   name="dateOfBirth"
                   id="dob"
+                  required
                 />
               </div>
               <div>

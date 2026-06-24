@@ -17,8 +17,7 @@ export default function AuthProvider({
     const checkSession = async () => {
       try {
         const res = await Api.get("/auth/me");
-
-        dispatch(setSession({ user: res.data.user }));
+        dispatch(setSession(res.data)); // backend returns user object directly
       } catch {
         dispatch(logout());
       } finally {

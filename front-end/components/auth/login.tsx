@@ -39,7 +39,6 @@ export default function LogIn({ setRegister }: Props) {
     if (loginUser.fulfilled.match(result)) {
       // backend already sets session cookie
       // we just store user in redux
-      dispatch(setSession({ user: result.payload }));
     }
   };
 

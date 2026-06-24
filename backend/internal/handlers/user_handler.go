@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"fmt"
 	"path/filepath"
 	"social-network/backend/internal/middleware"
 	"social-network/backend/internal/models"
@@ -31,10 +30,20 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req models.RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	// limit upload size to 5MB
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
 		return
+	}
+
+	req := models.RegisterRequest{
+		Email:       r.FormValue("email"),
+		Password:    r.FormValue("password"),
+		FirstName:   r.FormValue("first_name"),
+		LastName:    r.FormValue("last_name"),
+		DateOfBirth: r.FormValue("date_of_birth"),
+		NickName:    r.FormValue("nickname"),
+		AboutMe:     r.FormValue("about_me"),
 	}
 
 	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {
@@ -44,9 +53,28 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.Register(&req)
 	if err != nil {
-		fmt.Println(err, "error adding to users table")
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
+	}
+
+	// handle optional avatar in the same request
+	file, handler, err := r.FormFile("avatar")
+	if err == nil {
+		defer file.Close()
+
+		ext := strings.ToLower(filepath.Ext(handler.Filename))
+		if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" {
+			filename := user.ID + ext
+			savePath := filepath.Join("uploads", "avatars", filename)
+
+			dst, err := os.Create(savePath)
+			if err == nil {
+				defer dst.Close()
+				io.Copy(dst, file)
+				h.userService.UpdateAvatar(user.ID, savePath)
+				user.Avatar = savePath
+			}
+		}
 	}
 
 	session, err := h.sessionService.CreateSession(user.ID)
@@ -62,6 +90,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
 	})
 
 	w.Header().Set("Content-Type", "application/json")

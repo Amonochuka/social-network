@@ -3,14 +3,15 @@ import { Api } from "@/services/axios";
 import { RootState } from "../store";
 
 export interface User {
-  userId: string;
-  userAvatar: string;
-  nickName: string;
-  aboutMe: string;
-  fullName: string;
-  DateOfBirth: string;
-  isPublic: boolean;
-  createdAt: string;
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string;
+  avatar: string;
+  nickname: string;
+  about_me: string;
+  is_public: boolean;
 }
 
 interface AuthState {
@@ -32,23 +33,29 @@ export const loginUser = createAsyncThunk(
   async (data: { email: string; password: string }, { rejectWithValue }) => {
     try {
       const res = await Api.post("/auth/login", data);
-
-      return res.data.user;
+      return res.data; // backend returns the user object directly, not wrapped in { user: ... }
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || "Login failed");
+      return rejectWithValue(err.response?.data || "Login failed");
     }
   }
 );
 
 export const registerUser = createAsyncThunk(
   "auth/register",
-  async (formData: FormData, { rejectWithValue }) => {
+  async (data: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    date_of_birth: string;
+    nickname?: string;
+    about_me?: string;
+  }, { rejectWithValue }) => {
     try {
-      const res = await Api.post("/auth/register", formData);
-
-      return res.data.user;
+      const res = await Api.post("/auth/register", data); // JSON, not FormData
+      return res.data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || "Register failed");
+      return rejectWithValue(err.response?.data || "Register failed");
     }
   }
 );
@@ -58,21 +65,17 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setSession: (state, action) => {
-      state.user = action.payload.user;
+      state.user = action.payload;
       state.isAuthenticated = true;
     },
-
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
     },
   },
-
   extraReducers: (builder) => {
     builder
-
-      // LOGIN
       .addCase(loginUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isAuthenticated = true;
@@ -85,8 +88,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-
-      // REGISTER
       .addCase(registerUser.fulfilled, (state, action) => {
         state.user = action.payload;
         state.isAuthenticated = true;
