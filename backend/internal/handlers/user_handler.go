@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"fmt"
 	"path/filepath"
 	"social-network/backend/internal/middleware"
 	"social-network/backend/internal/models"

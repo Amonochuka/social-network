@@ -52,3 +52,60 @@ type PostRepository interface {
 	CreateComment(comment *models.Comment) error
 	GetCommentsByPostID(postID string) ([]*models.Comment, error)
 }
+
+// MessageRepository handles persistence for both private and group messages.
+type MessageRepository interface {
+	// Private messages
+	SavePrivateMessage(msg *models.PrivateMessage) error
+	GetPrivateMessages(userA, userB string, limit int) ([]*models.PrivateMessage, error)
+
+	// Group messages
+	SaveGroupMessage(msg *models.GroupMessage) error
+	GetGroupMessages(groupID string, limit int) ([]*models.GroupMessage, error)
+
+	// Group membership check (groups table owned by Dev 4)
+	IsGroupMember(userID, groupID string) (bool, error)
+}
+
+// GroupRepository covers all group and group-content persistence.
+type GroupRepository interface {
+	// ── Core group CRUD ──────────────────────────────────────────────────────
+	CreateGroup(g *models.Group) error
+	GetGroupByID(groupID string) (*models.Group, error)
+	GetAllGroups(viewerID string) ([]*models.Group, error)
+
+	// ── Membership ───────────────────────────────────────────────────────────
+	AddMember(groupID, userID string) error
+	RemoveMember(groupID, userID string) error
+	IsMember(groupID, userID string) (bool, error)
+	GetMembers(groupID string) ([]*models.GroupMember, error)
+
+	// ── Invitations ──────────────────────────────────────────────────────────
+	CreateInvitation(inv *models.GroupInvitation) error
+	GetInvitationByID(invID string) (*models.GroupInvitation, error)
+	GetPendingInvitation(groupID, inviteeID string) (*models.GroupInvitation, error)
+	UpdateInvitation(invID, status string) error
+
+	// ── Join requests ────────────────────────────────────────────────────────
+	CreateJoinRequest(req *models.GroupRequest) error
+	GetJoinRequestByID(reqID string) (*models.GroupRequest, error)
+	GetPendingJoinRequest(groupID, userID string) (*models.GroupRequest, error)
+	UpdateJoinRequest(reqID, status string) error
+
+	// ── Group posts ──────────────────────────────────────────────────────────
+	CreateGroupPost(post *models.GroupPost) error
+	GetGroupPosts(groupID string) ([]*models.GroupPost, error)
+	GetGroupPostByID(postID string) (*models.GroupPost, error)
+
+	// ── Group comments ───────────────────────────────────────────────────────
+	CreateGroupComment(comment *models.GroupComment) error
+	GetGroupComments(groupPostID string) ([]*models.GroupComment, error)
+}
+
+// EventRepository covers event persistence.
+type EventRepository interface {
+	CreateEvent(e *models.Event) error
+	GetEventsByGroupID(groupID, viewerID string) ([]*models.Event, error)
+	GetEventByID(eventID, viewerID string) (*models.Event, error)
+	UpsertResponse(resp *models.EventResponse) error
+}

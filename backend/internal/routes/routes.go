@@ -1,10 +1,14 @@
 package routes
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
+	"social-network/backend/internal/models"
 	"social-network/backend/internal/services"
+	"social-network/backend/internal/ws"
 )
 
 func Register(
@@ -56,4 +60,224 @@ func Register(
 	// Private Notification Routes
 	mux.Handle("/api/notifications", auth.Authenticate(http.HandlerFunc(notificationHandler.GetNotifications)))
 	mux.Handle("/api/notifications/{notification_id}/read", auth.Authenticate(http.HandlerFunc(notificationHandler.MarkAsRead)))
+}
+
+func RegisterWSRoutes(
+	mux *http.ServeMux,
+	hub *ws.Hub,
+	msgSvc *services.MessageService,
+	sessionService *services.SessionService,
+) {
+	auth := middleware.NewAuthMiddleware(sessionService)
+
+	// ── 1. HTTP HISTORY ENDPOINTS ───────────────────────────────────────────
+
+	// GET /api/chat/private/{userId} - Fetches direct messaging logs
+	mux.Handle("/api/chat/private/{id}", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		senderID := middleware.GetUserID(r)
+		targetUserID := r.PathValue("id") // Extract path parameter natively
+
+		history, err := msgSvc.GetPrivateHistory(senderID, targetUserID)
+		if err != nil {
+			http.Error(w, "Failed to retrieve chat history", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(history)
+	})))
+
+	// GET /api/chat/group/{groupId} - Fetches community room logs
+	mux.Handle("/api/chat/group/{id}", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		groupID := r.PathValue("id")
+
+		history, err := msgSvc.GetGroupHistory(groupID)
+		if err != nil {
+			http.Error(w, "Failed to retrieve group history", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(history)
+	})))
+
+	// ── 2. REAL-TIME CHAT WEBSOCKET ENDPOINT ─────────────────────────────────
+
+	mux.Handle("/ws", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := middleware.GetUserID(r)
+		if userID == "" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		ws.ServeWS(w, r,
+			func(client *ws.Client) {
+				hub.RegisterPrivate(userID, client)
+			},
+			func() {
+				hub.UnregisterPrivate(userID)
+			},
+			func(msg []byte) {
+				var frame models.WSMessageFrame
+				if err := json.Unmarshal(msg, &frame); err != nil {
+					log.Printf("Malformed WS envelope error: %v", err)
+					return
+				}
+
+				switch frame.Type {
+				case "private_chat":
+					var chat models.PrivateChatPayload
+					if err := json.Unmarshal(frame.Payload, &chat); err != nil {
+						log.Printf("Invalid private payload structure: %v", err)
+						return
+					}
+
+					savedMsg, err := msgSvc.SendPrivateMessage(userID, chat.ReceiverID, chat.Content)
+					if err != nil {
+						log.Printf("Business logic chat rejection: %v", err)
+						return
+					}
+
+					outboundPayload, _ := json.Marshal(map[string]interface{}{
+						"type":    "private_chat",
+						"payload": savedMsg,
+					})
+
+					hub.SendToUser(chat.ReceiverID, outboundPayload)
+					hub.SendToUser(userID, outboundPayload)
+
+				case "group_chat":
+					var group models.GroupChatPayload
+					if err := json.Unmarshal(frame.Payload, &group); err != nil {
+						log.Printf("Invalid group payload structure: %v", err)
+						return
+					}
+
+					// Dynamic Group Sub-registration: Link client to the group room map if missing
+					// This ensures the client receives subsequent messages via BroadcastToGroup
+					ws.ServeWS(w, r, func(client *ws.Client) {
+						hub.RegisterGroup(group.GroupID, client)
+					}, func() {}, func(msg []byte) {})
+
+					savedMsg, err := msgSvc.SendGroupMessage(userID, group.GroupID, group.Content)
+					if err != nil {
+						log.Printf("Business logic group rejection: %v", err)
+						return
+					}
+
+					outboundPayload, _ := json.Marshal(map[string]interface{}{
+						"type":    "group_chat",
+						"payload": savedMsg,
+					})
+
+					hub.BroadcastToGroup(group.GroupID, outboundPayload)
+
+				default:
+					log.Printf("Unhandled WebSocket transmission packet frame type: %s", frame.Type)
+				}
+			},
+		)
+	})))
+
+	// ── 3. REAL-TIME NOTIFICATIONS WEBSOCKET ENDPOINT ───────────────────────
+
+	mux.Handle("/ws/notifications", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := middleware.GetUserID(r)
+		if userID == "" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Connect notification socket pipe with a dedicated event channel loop
+		ws.ServeWS(w, r,
+			func(client *ws.Client) {
+				// Registers inside your explicit hub.go map signature 'notifClients'
+				hub.RegisterNotif(userID, client)
+				log.Printf("Notification socket registered for user: %s", userID)
+			},
+			func() {
+				// Cleans up the map allocation completely when browser drops connection
+				hub.UnregisterNotif(userID)
+				log.Printf("Notification socket terminated for user: %s", userID)
+			},
+			func(msg []byte) {
+				// Notification sockets primarily receive outbound data from the server.
+				// However, if the client sends an acknowledgment frame, we process it here.
+				log.Printf("Received notification frame payload from client: %s", string(msg))
+			},
+		)
+	})))
+}
+
+// RegisterGroupRoutes adds all group and event endpoints to the mux.
+// Paste this function into backend/internal/routes/routes.go
+// alongside your existing Register() and RegisterWSRoutes() functions.
+
+func RegisterGroupRoutes(
+	mux *http.ServeMux,
+	groupHandler *handlers.GroupHandler,
+	eventHandler *handlers.EventHandler,
+	sessionService *services.SessionService,
+) {
+	auth := middleware.NewAuthMiddleware(sessionService)
+
+	// ── Groups ────────────────────────────────────────────────────────────────
+	mux.Handle("/api/groups", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			groupHandler.CreateGroup(w, r)
+		case http.MethodGet:
+			groupHandler.GetAllGroups(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/groups/{group_id}", auth.Authenticate(http.HandlerFunc(groupHandler.GetGroupByID)))
+	mux.Handle("/api/groups/{group_id}/members", auth.Authenticate(http.HandlerFunc(groupHandler.GetMembers)))
+
+	// ── Invitations ───────────────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/invite", auth.Authenticate(http.HandlerFunc(groupHandler.InviteUser)))
+	mux.Handle("/api/groups/invitations/{inv_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptInvitation)))
+	mux.Handle("/api/groups/invitations/{inv_id}/reject", auth.Authenticate(http.HandlerFunc(groupHandler.RejectInvitation)))
+
+	// ── Join requests ─────────────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/join", auth.Authenticate(http.HandlerFunc(groupHandler.RequestToJoin)))
+	mux.Handle("/api/groups/requests/{req_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptJoinRequest)))
+	mux.Handle("/api/groups/requests/{req_id}/reject", auth.Authenticate(http.HandlerFunc(groupHandler.RejectJoinRequest)))
+
+	// ── Group posts & comments ────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/posts", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			groupHandler.CreateGroupPost(w, r)
+		case http.MethodGet:
+			groupHandler.GetGroupPosts(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/groups/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			groupHandler.CreateGroupComment(w, r)
+		case http.MethodGet:
+			groupHandler.GetGroupComments(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	// ── Events ────────────────────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/events", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			eventHandler.CreateEvent(w, r)
+		case http.MethodGet:
+			eventHandler.GetEvents(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/events/{event_id}/respond", auth.Authenticate(http.HandlerFunc(eventHandler.RespondToEvent)))
 }
