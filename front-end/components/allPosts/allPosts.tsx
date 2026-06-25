@@ -1,15 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import UserProfileImage from "../header/profile/userProfile";
 import style from "@/styles/all-post.module.css";
 import { Button } from "../ui/button";
 import { ButtonData } from "@/types";
 import { createPostBtn } from "@/styles/style";
 import { Clapperboard, Eye, LockIcon, Image as LucideImage } from "lucide-react";
-import { allPostData } from "@/libs/dummy";
 import Image from "next/image";
 import { CSSProperties } from "react";
 import { PostInteractions } from "./interactions";
+import { Api } from "@/services/axios";
 
 const data: ButtonData = {
   text: "create post",
@@ -17,7 +18,46 @@ const data: ButtonData = {
   style: createPostBtn,
 };
 
+interface FeedPost {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string;
+  content: string;
+  media_path: string;
+  media_type: string;
+  privacy: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function UserPostUI() {
+  const [postText, setPostText] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleCreatePost = async () => {
+    if (!postText.trim() || posting) return;
+    setPosting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("content", postText);
+      formData.append("privacy", "public");
+
+      await Api.post("/posts", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setPostText("");
+      setRefreshKey((k) => k + 1); // triggers AllPostUI to refetch
+    } catch (err) {
+      console.error("Failed to create post:", err);
+    } finally {
+      setPosting(false);
+    }
+  };
+
   return (
     <div className={style.postParentCont}>
       <div className={style.postHomeCont}>
@@ -28,9 +68,12 @@ export default function UserPostUI() {
             type="text"
             placeholder="what's on your mind"
             name="postData"
+            value={postText}
+            onChange={(e) => setPostText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCreatePost()}
           />
-          <div>
-            <Button data={data} />
+          <div onClick={handleCreatePost}>
+            <Button data={{ ...data, text: posting ? "posting..." : "create post" }} />
           </div>
         </div>
         <div className={style.iconPostDisplay}>
@@ -44,39 +87,76 @@ export default function UserPostUI() {
           </div>
         </div>
       </div>
-      <AllPostUI />
+      <AllPostUI refreshKey={refreshKey} />
     </div>
   );
 }
 
-export function AllPostUI() {
-  return (
-    <div className={style.AllPostLayout}>
-      <MapAllPost />
-    </div>
-  );
-}
+export function AllPostUI({ refreshKey }: { refreshKey: number }) {
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export function MapAllPost() {
-  return allPostData.map((data) => {
+  useEffect(() => {
+    const fetchFeed = async () => {
+      try {
+        const res = await Api.get<FeedPost[]>("/posts/feed");
+        setPosts(res.data ?? []);
+      } catch (err) {
+        console.error("Failed to load feed:", err);
+        setPosts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeed();
+  }, [refreshKey]);
+
+  if (loading) {
+    return <div className={style.AllPostLayout}>Loading feed...</div>;
+  }
+
+  if (posts.length === 0) {
     return (
-      <div key={data.postId} className={style.userPostDisplay}>
-        <UserPostProfile
-          userImage={data.userProfileImage}
-          fullName={data.fullName}
-          status={data.status}
-          datePosted={data.timePosted}
-          privacy={data.status}
-        />
-        <UserPostContent
-          description={data.description}
-          postImage={data.postImage}
-          likes={data.likes}
-          comments={data.comments}
-        />
+      <div className={style.AllPostLayout}>
+        <p style={{ textAlign: "center", color: "#888", padding: "2rem" }}>
+          No posts yet. Follow people to see their posts here.
+        </p>
       </div>
     );
-  });
+  }
+
+  return (
+    <div className={style.AllPostLayout}>
+      {posts.map((post) => (
+        <div key={post.id} className={style.userPostDisplay}>
+          <UserPostProfile
+            userImage={
+              post.author_avatar
+                ? post.author_avatar.startsWith("http")
+                  ? post.author_avatar
+                  : `http://localhost:8080/${post.author_avatar}`
+                : undefined
+            }
+            fullName={post.author_name}
+            status={post.privacy}
+            datePosted={new Date(post.created_at).toLocaleDateString()}
+            privacy={post.privacy}
+          />
+          <UserPostContent
+            description={post.content}
+            postImage={
+              post.media_path
+                ? `http://localhost:8080/${post.media_path}`
+                : undefined
+            }
+            likes={0}
+            comments={0}
+          />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 interface Props {
@@ -97,9 +177,7 @@ export function UserPostProfile({
   return (
     <div className={style.postUserProfile}>
       <div className={style.userImageName}>
-
         <UserProfileImage url={userImage} />
-
         <span className={style.userPostProfile}>
           <p>{fullName}</p>
           <p>posted on {datePosted}</p>
@@ -132,7 +210,7 @@ export function UserPostContent({ description, postImage, likes, comments }: Con
         {postImage ? (
           <>
             <div>
-              <p className={style.postDesscription} >{description}</p>
+              <p className={style.postDesscription}>{description}</p>
             </div>
 
             <div className={style.postsImageCont}>
@@ -161,7 +239,7 @@ interface DescriptionProps {
   description: string;
 }
 
-export function PostDescriptionUI({ description } : DescriptionProps) {
+export function PostDescriptionUI({ description }: DescriptionProps) {
   return (
     <div>
       <p className={style.shoutDescription}>{description}</p>
