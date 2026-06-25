@@ -206,3 +206,78 @@ func RegisterWSRoutes(
 		)
 	})))
 }
+
+// RegisterGroupRoutes adds all group and event endpoints to the mux.
+// Paste this function into backend/internal/routes/routes.go
+// alongside your existing Register() and RegisterWSRoutes() functions.
+
+func RegisterGroupRoutes(
+	mux *http.ServeMux,
+	groupHandler *handlers.GroupHandler,
+	eventHandler *handlers.EventHandler,
+	sessionService *services.SessionService,
+) {
+	auth := middleware.NewAuthMiddleware(sessionService)
+
+	// ── Groups ────────────────────────────────────────────────────────────────
+	mux.Handle("/api/groups", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			groupHandler.CreateGroup(w, r)
+		case http.MethodGet:
+			groupHandler.GetAllGroups(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/groups/{group_id}", auth.Authenticate(http.HandlerFunc(groupHandler.GetGroupByID)))
+	mux.Handle("/api/groups/{group_id}/members", auth.Authenticate(http.HandlerFunc(groupHandler.GetMembers)))
+
+	// ── Invitations ───────────────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/invite", auth.Authenticate(http.HandlerFunc(groupHandler.InviteUser)))
+	mux.Handle("/api/groups/invitations/{inv_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptInvitation)))
+	mux.Handle("/api/groups/invitations/{inv_id}/reject", auth.Authenticate(http.HandlerFunc(groupHandler.RejectInvitation)))
+
+	// ── Join requests ─────────────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/join", auth.Authenticate(http.HandlerFunc(groupHandler.RequestToJoin)))
+	mux.Handle("/api/groups/requests/{req_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptJoinRequest)))
+	mux.Handle("/api/groups/requests/{req_id}/reject", auth.Authenticate(http.HandlerFunc(groupHandler.RejectJoinRequest)))
+
+	// ── Group posts & comments ────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/posts", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			groupHandler.CreateGroupPost(w, r)
+		case http.MethodGet:
+			groupHandler.GetGroupPosts(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/groups/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			groupHandler.CreateGroupComment(w, r)
+		case http.MethodGet:
+			groupHandler.GetGroupComments(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	// ── Events ────────────────────────────────────────────────────────────────
+	mux.Handle("/api/groups/{group_id}/events", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			eventHandler.CreateEvent(w, r)
+		case http.MethodGet:
+			eventHandler.GetEvents(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
+
+	mux.Handle("/api/events/{event_id}/respond", auth.Authenticate(http.HandlerFunc(eventHandler.RespondToEvent)))
+}
