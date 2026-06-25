@@ -44,7 +44,7 @@ type PostRepository interface {
 	CreateAllowedUser(postID, userID string) error
 	GetPostsByUserID(userID, viewerID string) ([]*models.Post, error)
 	GetPostByID(postID string) (*models.Post, error)
-	GetFeed(userID string) ([]*models.Post, error)
+	GetFeed(userID string) ([]*models.FeedPost, error)
 	UpdatePost(post *models.Post) error
 	DeletePost(postID string) error
 	IsAllowedToViewPost(postID, userID string) (bool, error)

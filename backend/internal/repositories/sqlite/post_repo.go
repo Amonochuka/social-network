@@ -33,22 +33,15 @@ func (r *postRepository) CreateAllowedUser(postID, userID string) error {
 }
 
 func (r *postRepository) GetPostByID(postID string) (*models.Post, error) {
-	//Line 1 — run the query
 	row := r.db.QueryRow(`
     	SELECT id, user_id, content, media_path, media_type, privacy, created_at, updated_at
     	FROM posts
     	WHERE id = ?
 	`, postID)
 
-	//Line 2 — create empty Post struct to hold the result
-
 	var p models.Post
 
-	//Line 3 — scan the row into the struct
-
 	err := row.Scan(&p.ID, &p.UserID, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CreatedAt, &p.UpdatedAt)
-
-	//Line 4 — handle error
 
 	if err != nil {
 		return nil, err
@@ -126,41 +119,42 @@ func (r *postRepository) GetPostsByUserID(userID, viewerID string) ([]*models.Po
 	return posts, nil
 }
 
-func (r *postRepository) GetFeed(userID string) ([]*models.Post, error) {
+// GetFeed now joins users to include author name and avatar
+func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 
 	rows, err := r.db.Query(`
-		SELECT id, user_id, content, media_path, media_type, privacy, created_at, updated_at
-		FROM posts
+		SELECT p.id, p.user_id, u.first_name || ' ' || u.last_name AS author_name, u.avatar,
+		       p.content, p.media_path, p.media_type, p.privacy, p.created_at, p.updated_at
+		FROM posts p
+		JOIN users u ON u.id = p.user_id
 		WHERE (
-    -- post is from someone John follows
-    user_id IN (
-        SELECT following_id FROM followers WHERE follower_id = ?
-    )
-)
-AND (
-    -- and John is allowed to see it based on privacy
-    privacy = 'public'
-    OR (privacy = 'followers' AND EXISTS (
-        SELECT 1 FROM followers
-        WHERE follower_id = ? AND following_id = posts.user_id
-    ))
-    OR (privacy = 'selected' AND EXISTS (
-        SELECT 1 FROM post_allowed_users
-        WHERE post_id = posts.id AND user_id = ?
-    ))
-)
-ORDER BY created_at DESC
-`, userID, userID, userID)
+			p.user_id IN (
+				SELECT following_id FROM followers WHERE follower_id = ?
+			)
+		)
+		AND (
+			p.privacy = 'public'
+			OR (p.privacy = 'followers' AND EXISTS (
+				SELECT 1 FROM followers
+				WHERE follower_id = ? AND following_id = p.user_id
+			))
+			OR (p.privacy = 'selected' AND EXISTS (
+				SELECT 1 FROM post_allowed_users
+				WHERE post_id = p.id AND user_id = ?
+			))
+		)
+		ORDER BY p.created_at DESC
+	`, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	defer rows.Close()
 
-	var posts []*models.Post
+	var posts []*models.FeedPost
 	for rows.Next() {
-		var p models.Post
-		err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CreatedAt, &p.UpdatedAt)
+		var p models.FeedPost
+		err := rows.Scan(&p.ID, &p.UserID, &p.AuthorName, &p.AuthorAvatar, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}

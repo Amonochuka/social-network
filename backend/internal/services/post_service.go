@@ -85,7 +85,7 @@ func (s *PostService) GetPostsByUserID(userID, viewerID string) ([]*models.Post,
 	return posts, nil
 }
 
-func (s *PostService) GetFeed(userID string) ([]*models.Post, error) {
+func (s *PostService) GetFeed(userID string) ([]*models.FeedPost, error) {
 	posts, err := s.postRepo.GetFeed(userID)
 	if err != nil {
 		return nil, errors.New("could not get feed")
