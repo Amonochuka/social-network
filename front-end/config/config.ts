@@ -48,7 +48,7 @@ export default function loadEnvFile(urlProperties: Props): Config {
             if (
                 env && env === "development"
             ) {
-                const dev = process.env.NEXT_PUBLIC_DEV_BASE_URL ?? "http://localhost:8080"
+                const dev = process.env.NEXT_PUBLIC_DEV_BASE_URL ?? "http://localhost:8080/api"
                 config.baseUrl = dev
             }
             break;

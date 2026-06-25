@@ -9,7 +9,7 @@ import UserProfileImage from "../header/profile/userProfile";
 import { useDispatch, useSelector } from "react-redux";
 import { setToggle } from "@/store/features/toggleSideBarSlice";
 import { RootState } from "@/store/store";
-
+import Link from "next/link";
 
 interface SearchUIProps {
   placeholder?: string;
@@ -54,15 +54,17 @@ export function SearchUI({
 
 export function HomeNavElements() {
   const navElements = [
-    { id: 1, Icon: Home },
-    { id: 2, Icon: Bell },
-    { id: 3, Icon: MessageSquareDot },
+    { id: 1, Icon: Home, href: "/view/Home" },
+    { id: 2, Icon: Bell, href: "/view/Notifications" },
+    { id: 3, Icon: MessageSquareDot, href: "/view/Messages" },
   ];
   return (
     <div className="display-nav-h-icons">
-      {navElements.map((icon) => {
-        return <div key={icon.id}>{<icon.Icon size={23} />}</div>;
-      })}
+      {navElements.map((icon) => (
+        <Link key={icon.id} href={icon.href}>
+          <icon.Icon size={23} />
+        </Link>
+      ))}
     </div>
   );
 }
@@ -105,7 +107,9 @@ export default function HomeProfileUI() {
       <div className="display-home-nav">
         <SearchUI />
         <HomeNavElements />
-        <UserProfileImage />
+        <Link href="/view/profile">
+          <UserProfileImage />
+        </Link>
       </div>
     </div>
   );

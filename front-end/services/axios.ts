@@ -10,14 +10,3 @@ export const Api = axios.create({
         "Content-Type": "application/json",
     },
 });
-
-
-Api.interceptors.request.use((config) => {
-  const token = getAccessToken();
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
