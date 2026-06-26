@@ -181,14 +181,15 @@ func (s *FollowerService) Unfollow(followerID, followingID string) error {
 
 	return nil
 }
-func (s *FollowerService) GetFollowers(userID string) ([]*models.Follower, error) {
+
+func (s *FollowerService) GetFollowers(userID string) ([]*models.FollowerProfile, error) {
 	followers, err := s.followerRepo.GetFollowers(userID)
 	if err != nil {
 		return nil, errors.New("could not get followers")
 	}
 	return followers, nil
 }
-func (s *FollowerService) GetFollowing(userID string) ([]*models.Follower, error) {
+func (s *FollowerService) GetFollowing(userID string) ([]*models.FollowerProfile, error) {
 	following, err := s.followerRepo.GetFollowing(userID)
 	if err != nil {
 		return nil, errors.New("could not get following")

@@ -88,12 +88,13 @@ func (r *followerRepository) IsFollowing(followerID, followingID string) (bool, 
 	return count > 0, nil
 }
 
-func (r *followerRepository) GetFollowers(userID string) ([]*models.Follower, error) {
-	// Step 1 — run the query, get multiple rows back
+func (r *followerRepository) GetFollowers(userID string) ([]*models.FollowerProfile, error) {
+	// Step 1 — run the query, join users to get profile info instead of raw ids
 	rows, err := r.db.Query(`
-        SELECT follower_id, following_id, created_at
-        FROM followers
-        WHERE following_id = ?
+        SELECT u.id, u.first_name, u.last_name, u.avatar, u.nickname
+        FROM followers f
+        JOIN users u ON u.id = f.follower_id
+        WHERE f.following_id = ?
     `, userID)
 	if err != nil {
 		return nil, err
@@ -101,12 +102,12 @@ func (r *followerRepository) GetFollowers(userID string) ([]*models.Follower, er
 	defer rows.Close() // always close rows when done
 
 	// Step 2 — prepare an empty list to collect results
-	var followers []*models.Follower
+	var followers []*models.FollowerProfile
 
 	// Step 3 — loop through each row
 	for rows.Next() {
-		var f models.Follower
-		err := rows.Scan(&f.FollowerID, &f.FollowingID, &f.CreatedAt)
+		var f models.FollowerProfile
+		err := rows.Scan(&f.UserID, &f.FirstName, &f.LastName, &f.Avatar, &f.Nickname)
 		if err != nil {
 			return nil, err
 		}
@@ -116,12 +117,13 @@ func (r *followerRepository) GetFollowers(userID string) ([]*models.Follower, er
 	// Step 4 — return the list
 	return followers, nil
 }
-func (r *followerRepository) GetFollowing(userID string) ([]*models.Follower, error) {
-	// Step 1 — run the query, get multiple rows back
+func (r *followerRepository) GetFollowing(userID string) ([]*models.FollowerProfile, error) {
+	// Step 1 — run the query, join users to get profile info instead of raw ids
 	rows, err := r.db.Query(`
-        SELECT follower_id, following_id, created_at
-        FROM followers
-        WHERE follower_id = ?
+        SELECT u.id, u.first_name, u.last_name, u.avatar, u.nickname
+        FROM followers f
+        JOIN users u ON u.id = f.following_id
+        WHERE f.follower_id = ?
     `, userID)
 	if err != nil {
 		return nil, err
@@ -129,12 +131,12 @@ func (r *followerRepository) GetFollowing(userID string) ([]*models.Follower, er
 	defer rows.Close() // always close rows when done
 
 	// Step 2 — prepare an empty list to collect results
-	var followers []*models.Follower
+	var followers []*models.FollowerProfile
 
 	// Step 3 — loop through each row
 	for rows.Next() {
-		var f models.Follower
-		err := rows.Scan(&f.FollowerID, &f.FollowingID, &f.CreatedAt)
+		var f models.FollowerProfile
+		err := rows.Scan(&f.UserID, &f.FirstName, &f.LastName, &f.Avatar, &f.Nickname)
 		if err != nil {
 			return nil, err
 		}

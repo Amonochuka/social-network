@@ -28,8 +28,8 @@ type FollowerRepository interface {
 	DeleteFollower(followerID, followingID string) error
 	IsFollowing(followerID, followingID string) (bool, error)
 	// lists
-	GetFollowers(userID string) ([]*models.Follower, error)
-	GetFollowing(userID string) ([]*models.Follower, error)
+	GetFollowers(userID string) ([]*models.FollowerProfile, error)
+	GetFollowing(userID string) ([]*models.FollowerProfile, error)
 }
 
 type NotificationRepository interface {

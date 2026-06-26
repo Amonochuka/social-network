@@ -14,6 +14,14 @@ type Follower struct {
 	CreatedAt   time.Time
 }
 
+type FollowerProfile struct {
+	UserID    string `json:"user_id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Avatar    string `json:"avatar"`
+	Nickname  string `json:"nickname"`
+}
+
 type FollowRequest struct {
 	ID         string
 	SenderID   string
