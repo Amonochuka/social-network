@@ -6,11 +6,15 @@ import "@/styles/nav-side-bar.css";
 import { activeRoute, nonActive, navSideBar } from "@/styles/style";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSelector } from "react-redux";
+import { usePathname, useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { Api } from "@/services/axios";
+import { logout } from "@/store/features/authSlice";
 
 export default function NavSideBar() {
   const path = usePathname();
+  const router = useRouter();
+  const dispatch = useDispatch();
   const { toggle } = useSelector((state: RootState) => state.toggleSideBar);
 
   const newStyle = {
@@ -23,15 +27,30 @@ export default function NavSideBar() {
     justifyContent: "start",
   };
 
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      await Api.post("/auth/logout");
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      dispatch(logout());
+      router.push("/");
+    }
+  };
+
   return (
     <div style={toggle ? newStyle : navSideBar}>
       <Logo />
       <div className="ns-main-cont">
         {sidebarNav.map((v) => {
+          const isLogout = v.text === "Logout";
+
           return (
             <Link
-              href={`/view/${v.text}`}
+              href={isLogout ? "#" : `/view/${v.text}`}
               key={v.id}
+              onClick={isLogout ? handleLogout : undefined}
               style={
                 v.text === "Home" && (path === "/" || path === "/view/Home")
                   ? activeRoute

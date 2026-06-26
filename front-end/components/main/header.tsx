@@ -9,6 +9,7 @@ import UserProfileImage from "../header/profile/userProfile";
 import { useDispatch, useSelector } from "react-redux";
 import { setToggle } from "@/store/features/toggleSideBarSlice";
 import { RootState } from "@/store/store";
+import { authSelector } from "@/store/features/authSlice";
 import Link from "next/link";
 
 interface SearchUIProps {
@@ -99,6 +100,14 @@ export function ToggleSideBar() {
 }
 
 export default function HomeProfileUI() {
+  const { user } = useSelector(authSelector);
+
+  const avatarUrl = user?.avatar
+    ? user.avatar.startsWith("http")
+      ? user.avatar
+      : `http://localhost:8080/${user.avatar}`
+    : undefined;
+
   return (
     <div className="home-d-n-main">
       <div>
@@ -108,7 +117,7 @@ export default function HomeProfileUI() {
         <SearchUI />
         <HomeNavElements />
         <Link href="/view/profile">
-          <UserProfileImage />
+          <UserProfileImage url={avatarUrl} />
         </Link>
       </div>
     </div>

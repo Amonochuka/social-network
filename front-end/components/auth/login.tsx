@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { loginUser, authSelector, setSession } from "@/store/features/authSlice";
+import { config } from "@/services/axios";
 
 interface Props {
   setRegister: React.Dispatch<React.SetStateAction<boolean>>;
@@ -43,7 +44,8 @@ export default function LogIn({ setRegister }: Props) {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = "/api/auth/google";
+    // config.baseUrl already points to the backend, e.g. http://localhost:8080/api
+    window.location.href = `${config.baseUrl}/auth/google`;
   };
 
   const isValid =
