@@ -34,7 +34,7 @@ type FollowerRepository interface {
 
 type NotificationRepository interface {
 	CreateNotification(n *models.Notification) error
-	GetNotificationsByUserID(userID string) ([]*models.Notification, error)
+	GetNotificationsByUserID(userID string) ([]*models.NotificationDetail, error)
 	MarkNotificationAsRead(notificationID, userID string) error
 }
 

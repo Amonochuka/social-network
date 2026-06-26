@@ -70,11 +70,23 @@ type Comment struct {
 }
 
 type Notification struct {
-	ID          string
-	UserID      string
-	ActorID     string
-	Type        string
-	ReferenceID string
-	IsRead      bool
-	CreatedAt   time.Time
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	ActorID     string    `json:"actor_id"`
+	Type        string    `json:"type"`
+	ReferenceID string    `json:"reference_id"`
+	IsRead      bool      `json:"is_read"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type NotificationDetail struct {
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	ActorID     string    `json:"actor_id"`
+	ActorName   string    `json:"actor_name"`
+	ActorAvatar string    `json:"actor_avatar"`
+	Type        string    `json:"type"`
+	ReferenceID string    `json:"reference_id"`
+	IsRead      bool      `json:"is_read"`
+	CreatedAt   time.Time `json:"created_at"`
 }

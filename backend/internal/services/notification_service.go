@@ -14,7 +14,7 @@ func NewNotificationService(notificationRepo interfaces.NotificationRepository) 
 	return &NotificationService{notificationRepo: notificationRepo}
 }
 
-func (s *NotificationService) GetNotifications(userID string) ([]*models.Notification, error) {
+func (s *NotificationService) GetNotifications(userID string) ([]*models.NotificationDetail, error) {
 	notifications, err := s.notificationRepo.GetNotificationsByUserID(userID)
 	if err != nil {
 		return nil, errors.New("could not get notifications")
