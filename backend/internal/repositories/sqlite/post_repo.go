@@ -171,13 +171,15 @@ func (r *postRepository) CreateComment(comment *models.Comment) error {
 	return err
 }
 
-func (r *postRepository) GetCommentsByPostID(postID string) ([]*models.Comment, error) {
+func (r *postRepository) GetCommentsByPostID(postID string) ([]*models.CommentDetail, error) {
 
 	rows, err := r.db.Query(`
-			SELECT id, post_id, user_id, content, media_path, media_type, created_at
-			FROM comments
-			WHERE post_id = ?
-			ORDER BY created_at ASC
+			SELECT c.id, c.post_id, c.user_id, u.first_name || ' ' || u.last_name AS author_name, u.avatar,
+			       c.content, c.media_path, c.media_type, c.created_at
+			FROM comments c
+			JOIN users u ON u.id = c.user_id
+			WHERE c.post_id = ?
+			ORDER BY c.created_at ASC
 		`, postID)
 
 	if err != nil {
@@ -187,12 +189,12 @@ func (r *postRepository) GetCommentsByPostID(postID string) ([]*models.Comment, 
 
 	defer rows.Close()
 
-	var comments []*models.Comment
+	var comments []*models.CommentDetail
 
 	for rows.Next() {
 
-		var c models.Comment
-		err := rows.Scan(&c.ID, &c.PostID, &c.UserID, &c.Content, &c.MediaPath, &c.MediaType, &c.CreatedAt)
+		var c models.CommentDetail
+		err := rows.Scan(&c.ID, &c.PostID, &c.UserID, &c.AuthorName, &c.AuthorAvatar, &c.Content, &c.MediaPath, &c.MediaType, &c.CreatedAt)
 
 		if err != nil {
 

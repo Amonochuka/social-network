@@ -188,7 +188,7 @@ func (s *PostService) CreateComment(postID, userID, content, mediaPath, mediaTyp
 	return comment, nil
 }
 
-func (s *PostService) GetCommentsByPostID(postID string) ([]*models.Comment, error) {
+func (s *PostService) GetCommentsByPostID(postID string) ([]*models.CommentDetail, error) {
 	comments, err := s.postRepo.GetCommentsByPostID(postID)
 	if err != nil {
 		return nil, errors.New("could not get comments")

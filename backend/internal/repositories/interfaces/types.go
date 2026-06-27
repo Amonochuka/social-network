@@ -50,5 +50,5 @@ type PostRepository interface {
 	IsAllowedToViewPost(postID, userID string) (bool, error)
 	// comments
 	CreateComment(comment *models.Comment) error
-	GetCommentsByPostID(postID string) ([]*models.Comment, error)
+	GetCommentsByPostID(postID string) ([]*models.CommentDetail, error)
 }
