@@ -4,18 +4,21 @@ import { useState } from "react";
 import {
   MoreHorizontal,
   Pencil,
-  MapPin,
   Calendar,
+  X,
+  Camera,
 } from "lucide-react";
-import { useAppSelector } from "@/store/hooks";
-import { authSelector } from "@/store/features/authSlice";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { authSelector, setSession } from "@/store/features/authSlice";
 import { Api } from "@/services/axios";
 
 export default function ProfilePage() {
   const { user } = useAppSelector(authSelector);
+  const dispatch = useAppDispatch();
 
   const [isPublic, setIsPublic] = useState(user?.is_public ?? true);
   const [updating, setUpdating] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   if (!user) {
     return (
@@ -52,7 +55,10 @@ export default function ProfilePage() {
         </div>
 
         <div className="absolute right-4 top-5 flex items-center gap-2">
-          <button className="flex items-center gap-2 rounded-xl border border-white/20 bg-black/30 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-black/50">
+          <button
+            onClick={() => setShowEditModal(true)}
+            className="flex items-center gap-2 rounded-xl border border-white/20 bg-black/30 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-black/50"
+          >
             <Pencil size={14} />
             Edit Profile
           </button>
@@ -128,6 +134,202 @@ export default function ProfilePage() {
       <div className="flex-1 p-6">
         <div className="rounded-2xl bg-[#222] p-8 text-center text-sm text-gray-500">
           Posts, followers, and following counts coming next.
+        </div>
+      </div>
+
+      {showEditModal && (
+        <EditProfileModal
+          onClose={() => setShowEditModal(false)}
+          onSaved={(updatedUser) => {
+            dispatch(setSession(updatedUser));
+            setShowEditModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface EditProfileModalProps {
+  onClose: () => void;
+  onSaved: (user: any) => void;
+}
+
+function EditProfileModal({ onClose, onSaved }: EditProfileModalProps) {
+  const { user } = useAppSelector(authSelector);
+
+  const [firstName, setFirstName] = useState(user?.first_name ?? "");
+  const [lastName, setLastName] = useState(user?.last_name ?? "");
+  const [nickname, setNickname] = useState(user?.nickname ?? "");
+  const [aboutMe, setAboutMe] = useState(user?.about_me ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(
+    user?.date_of_birth ? user.date_of_birth.split("T")[0] : ""
+  );
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      // 1. update text fields
+      const res = await Api.put("/profile", {
+        first_name: firstName,
+        last_name: lastName,
+        nickname: nickname,
+        about_me: aboutMe,
+        date_of_birth: dateOfBirth,
+      });
+
+      let updatedUser = res.data;
+
+      // 2. upload avatar separately if a new one was selected
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append("avatar", avatarFile);
+        const avatarRes = await Api.post("/profile/avatar", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        updatedUser = { ...updatedUser, avatar: avatarRes.data.avatar };
+      }
+
+      onSaved(updatedUser);
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+      setError("Failed to save changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-[#1e1e1e] p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">Edit Profile</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-white/5 hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* avatar */}
+        <div className="mb-5 flex items-center gap-4">
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500">
+            {avatarPreview || user?.avatar ? (
+              <img
+                src={
+                  avatarPreview
+                    ? avatarPreview
+                    : user!.avatar.startsWith("http")
+                    ? user!.avatar
+                    : `http://localhost:8080/${user!.avatar}`
+                }
+                alt="avatar preview"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xl font-bold text-white">
+                {firstName[0]}
+                {lastName[0]}
+              </div>
+            )}
+          </div>
+          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/5">
+            <Camera size={14} />
+            Change photo
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/gif"
+              onChange={handleAvatarChange}
+              hidden
+            />
+          </label>
+        </div>
+
+        {/* fields */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs text-gray-400">First name</label>
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full rounded-lg bg-[#262626] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-gray-400">Last name</label>
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full rounded-lg bg-[#262626] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-gray-400">Nickname</label>
+            <input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="w-full rounded-lg bg-[#262626] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-gray-400">Date of birth</label>
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              className="w-full rounded-lg bg-[#262626] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-gray-400">About me</label>
+            <textarea
+              value={aboutMe}
+              onChange={(e) => setAboutMe(e.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-lg bg-[#262626] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-white/5"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-[--primary-theme] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save changes"}
+          </button>
         </div>
       </div>
     </div>
