@@ -29,6 +29,7 @@ interface FeedPost {
   media_path: string;
   media_type: string;
   privacy: string;
+  comment_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -167,7 +168,7 @@ export function AllPostUI({ refreshKey }: { refreshKey: number }) {
                 : undefined
             }
             likes={0}
-            comments={0}
+            comments={post.comment_count}
           />
         </div>
       ))}
