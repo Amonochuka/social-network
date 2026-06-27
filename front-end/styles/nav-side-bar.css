@@ -4,6 +4,7 @@
     width: 16%;
     height: 100vh;
     border-radius: 0.4rem;
+    overflow-y: auto;
 }
 
 .ns-main-cont {

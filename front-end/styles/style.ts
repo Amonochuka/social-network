@@ -6,6 +6,7 @@ export const navSideBar = {
     width: "23%",
     height: "100vh",
     borderRadius: "0.4rem",
+    overflowY: "auto" as const,
 }
 
 
