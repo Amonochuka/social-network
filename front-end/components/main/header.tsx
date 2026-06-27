@@ -108,6 +108,8 @@ export default function HomeProfileUI() {
       : `http://localhost:8080/${user.avatar}`
     : undefined;
 
+  const fullName = user ? `${user.first_name} ${user.last_name}` : "?";
+
   return (
     <div className="home-d-n-main">
       <div>
@@ -117,7 +119,7 @@ export default function HomeProfileUI() {
         <SearchUI />
         <HomeNavElements />
         <Link href="/view/profile">
-          <UserProfileImage url={avatarUrl} />
+          <UserProfileImage url={avatarUrl} name={fullName} />
         </Link>
       </div>
     </div>

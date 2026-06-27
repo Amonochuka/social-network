@@ -3,9 +3,38 @@ import style from "@/styles/profile.module.css";
 
 interface Props {
   url?: string;
+  name?: string;
 }
 
-export default function UserProfileImage({ url = "/maodongo.jpeg" }: Props) {
+export default function UserProfileImage({ url, name = "?" }: Props) {
+  const initials = name
+    .trim()
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  if (!url) {
+    return (
+      <div>
+        <div
+          className={style.imageCont}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(135deg, var(--primary-theme), #1f1f1f)",
+            color: "#fff",
+            fontWeight: 700,
+          }}
+        >
+          {initials}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className={style.imageCont}>

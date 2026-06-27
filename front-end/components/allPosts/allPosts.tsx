@@ -11,6 +11,8 @@ import Image from "next/image";
 import { CSSProperties } from "react";
 import { PostInteractions } from "./interactions";
 import { Api } from "@/services/axios";
+import { useAppSelector } from "@/store/hooks";
+import { authSelector } from "@/store/features/authSlice";
 
 const data: ButtonData = {
   text: "create post",
@@ -32,6 +34,7 @@ interface FeedPost {
 }
 
 export default function UserPostUI() {
+  const { user } = useAppSelector(authSelector);
   const [postText, setPostText] = useState("");
   const [posting, setPosting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -58,11 +61,19 @@ export default function UserPostUI() {
     }
   };
 
+  const myAvatarUrl = user?.avatar
+    ? user.avatar.startsWith("http")
+      ? user.avatar
+      : `http://localhost:8080/${user.avatar}`
+    : undefined;
+
+  const myFullName = user ? `${user.first_name} ${user.last_name}` : "?";
+
   return (
     <div className={style.postParentCont}>
       <div className={style.postHomeCont}>
         <div className={style.postHomeMain}>
-          <UserProfileImage />
+          <UserProfileImage url={myAvatarUrl} name={myFullName} />
           <input
             className={style.postData}
             type="text"
@@ -177,7 +188,7 @@ export function UserPostProfile({
   return (
     <div className={style.postUserProfile}>
       <div className={style.userImageName}>
-        <UserProfileImage url={userImage} />
+        <UserProfileImage url={userImage} name={fullName} />
         <span className={style.userPostProfile}>
           <p>{fullName}</p>
           <p>posted on {datePosted}</p>
