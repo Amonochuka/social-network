@@ -16,7 +16,7 @@ import { authSelector } from "@/store/features/authSlice";
 
 const data: ButtonData = {
   text: "create post",
-  type: "submit",
+  type: "button",
   style: createPostBtn,
 };
 
@@ -83,9 +83,13 @@ export default function UserPostUI() {
             onChange={(e) => setPostText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreatePost()}
           />
-          <div onClick={handleCreatePost}>
-            <Button data={{ ...data, text: posting ? "posting..." : "create post" }} />
-          </div>
+          <Button
+            data={{
+              ...data,
+              text: posting ? "posting..." : "create post",
+              onClick: handleCreatePost,
+            }}
+          />
         </div>
         <div className={style.iconPostDisplay}>
           <div className={style.iconFlex}>

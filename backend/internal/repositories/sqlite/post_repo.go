@@ -128,12 +128,14 @@ func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE (
-			p.user_id IN (
+			p.user_id = ?
+			OR p.user_id IN (
 				SELECT following_id FROM followers WHERE follower_id = ?
 			)
 		)
 		AND (
-			p.privacy = 'public'
+			p.user_id = ?
+			OR p.privacy = 'public'
 			OR (p.privacy = 'followers' AND EXISTS (
 				SELECT 1 FROM followers
 				WHERE follower_id = ? AND following_id = p.user_id
@@ -144,7 +146,7 @@ func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 			))
 		)
 		ORDER BY p.created_at DESC
-	`, userID, userID, userID)
+	`, userID, userID, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}
