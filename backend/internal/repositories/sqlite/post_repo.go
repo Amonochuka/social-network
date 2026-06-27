@@ -124,7 +124,9 @@ func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 
 	rows, err := r.db.Query(`
 		SELECT p.id, p.user_id, u.first_name || ' ' || u.last_name AS author_name, u.avatar,
-		       p.content, p.media_path, p.media_type, p.privacy, p.created_at, p.updated_at
+		       p.content, p.media_path, p.media_type, p.privacy,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+		       p.created_at, p.updated_at
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE (
@@ -156,7 +158,7 @@ func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 	var posts []*models.FeedPost
 	for rows.Next() {
 		var p models.FeedPost
-		err := rows.Scan(&p.ID, &p.UserID, &p.AuthorName, &p.AuthorAvatar, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CreatedAt, &p.UpdatedAt)
+		err := rows.Scan(&p.ID, &p.UserID, &p.AuthorName, &p.AuthorAvatar, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CommentCount, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}

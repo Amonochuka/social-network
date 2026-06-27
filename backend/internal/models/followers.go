@@ -50,6 +50,7 @@ type FeedPost struct {
 	MediaPath    string    `json:"media_path"`
 	MediaType    string    `json:"media_type"`
 	Privacy      string    `json:"privacy"`
+	CommentCount int       `json:"comment_count"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

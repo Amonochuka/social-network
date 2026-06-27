@@ -159,6 +159,7 @@ export function AllPostUI({ refreshKey }: { refreshKey: number }) {
             privacy={post.privacy}
           />
           <UserPostContent
+            postId={post.id}
             description={post.content}
             postImage={
               post.media_path
@@ -207,13 +208,14 @@ export function UserPostProfile({
 }
 
 interface ContentInterface {
+  postId: string;
   description: string;
   postImage?: string;
   likes: number;
   comments: number;
 }
 
-export function UserPostContent({ description, postImage, likes, comments }: ContentInterface) {
+export function UserPostContent({ postId, description, postImage, likes, comments }: ContentInterface) {
   const imageStyle: CSSProperties = {
     objectFit: "cover",
     borderRadius: "0.5rem",
@@ -243,7 +245,7 @@ export function UserPostContent({ description, postImage, likes, comments }: Con
         )}
 
         <div>
-          <PostInteractions comments={comments} likes={likes} />
+          <PostInteractions postId={postId} comments={comments} likes={likes} />
         </div>
       </div>
     </div>
