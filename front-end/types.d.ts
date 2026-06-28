@@ -88,6 +88,8 @@ export interface UserProfileData {
 export interface ChatMessages {
     messageId: string;
     senderId: string;
+    senderName?: string;
+    senderAvatar?: string;
     receiverId: string;
     content: string;
     createdAt: string;

@@ -2,13 +2,20 @@ import SingleUserChatProfile from "./singleUserChatProfile";
 import Messages from "./messages";
 import SendTextMessage from "@/components/ui/sendUI";
 import ProtectedRoute from "@/components/protected/protected";
-import { ChatMessages, FollowUsers } from "@/types";
+import { ChatMessages } from "@/types";
+
+interface ChatProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  avatar: string;
+}
 
 interface Props {
-  data: FollowUsers;
+  data: ChatProfile;
   connected: boolean;
   messages: ChatMessages[];
-  sendMessage: (message: ChatMessages) => void;
+  sendMessage: (receiverId: string, content: string) => void;
 }
 
 export default function ChatContentLayout({

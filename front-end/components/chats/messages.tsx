@@ -1,8 +1,7 @@
 "use client"
-
-
-import { useParams } from "next/navigation";
 import { ChatMessages } from "@/types";
+import { useAppSelector } from "@/store/hooks";
+import { authSelector } from "@/store/features/authSlice";
 import Image from "next/image";
 
 export default function Messages({
@@ -10,7 +9,7 @@ export default function Messages({
 }: {
   messages: ChatMessages[];
 }) {
-  const { userId } = useParams();
+  const { user } = useAppSelector(authSelector);
 
   return (
     <div className="flex flex-col gap-4">
@@ -18,7 +17,7 @@ export default function Messages({
         <MessageBubble
           key={msg.messageId}
           text={msg.content}
-          sender={msg.senderId === Number(userId)}
+          sender={msg.senderId === user?.id}
         />
       ))}
     </div>
@@ -45,17 +44,14 @@ export function MessageBubble({
   );
 }
 
-
 export function NewChat() {
   return (
     <div className="w-full h-screen flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <Image src="/chat.svg" alt="new chat" width={180} height={180} />
-
         <p className="text-3xl font-bold text-gray-300">
           Start a Conversation
         </p>
-
         <p className="text-gray-500">
           Select a friend from the sidebar
         </p>

@@ -19,7 +19,7 @@ export default function loadEnvFile(urlProperties: Props): Config {
                     if (
                         env && env === "development"
                     ) {
-                        const dev = process.env.NEXT_PUBLIC_WS_DEV_CHAT_URL ?? "ws://localhost:8080/ws/chat"
+                        const dev = process.env.NEXT_PUBLIC_WS_DEV_CHAT_URL ?? "ws://localhost:8080/api/chat/ws"
                         config.sockectUrl = dev
                     }
                     break;
