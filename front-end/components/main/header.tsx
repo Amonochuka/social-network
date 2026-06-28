@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowRight, Menu, Search } from "lucide-react";
 import { FormState } from "@/types";
 import { useActionState } from "react";
@@ -11,6 +12,7 @@ import { setToggle } from "@/store/features/toggleSideBarSlice";
 import { RootState } from "@/store/store";
 import { authSelector } from "@/store/features/authSlice";
 import Link from "next/link";
+import { Api } from "@/services/axios";
 
 interface SearchUIProps {
   placeholder?: string;
@@ -54,18 +56,39 @@ export function SearchUI({
 }
 
 export function HomeNavElements() {
-  const navElements = [
-    { id: 1, Icon: Home, href: "/view/Home" },
-    { id: 2, Icon: Bell, href: "/view/Notifications" },
-    { id: 3, Icon: MessageSquareDot, href: "/view/Messages" },
-  ];
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await Api.get<any[]>("/notifications");
+        const unread = (res.data ?? []).filter((n) => !n.is_read).length;
+        setUnreadCount(unread);
+      } catch (err) {
+        console.error("Failed to load notifications:", err);
+      }
+    };
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="display-nav-h-icons">
-      {navElements.map((icon) => (
-        <Link key={icon.id} href={icon.href}>
-          <icon.Icon size={23} />
-        </Link>
-      ))}
+    <div className="display-nav-h-icons flex items-center gap-6">
+      <Link href="/view/Home">
+        <Home size={23} />
+      </Link>
+      <Link href="/view/Notifications" className="relative">
+        <Bell size={23} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+            {unreadCount}
+          </span>
+        )}
+      </Link>
+      <Link href="/view/Messages">
+        <MessageSquareDot size={23} />
+      </Link>
     </div>
   );
 }
