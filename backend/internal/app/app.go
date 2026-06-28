@@ -37,6 +37,7 @@ func New() (*App, error) {
 	notificationRepo := repoSqlite.NewNotificationRepository(db)
 	postRepo := repoSqlite.NewPostRepository(db)
 	chatRepo := repoSqlite.NewChatRepository(db)
+	groupRepo := repoSqlite.NewGroupRepository(db)
 
 	// 3. services
 	userService := services.NewUserService(userRepo, followerRepo)
@@ -46,6 +47,7 @@ func New() (*App, error) {
 	notificationService := services.NewNotificationService(notificationRepo)
 	oauthService := services.NewOAuthService(userRepo, cfg)
 	chatService := services.NewChatService(chatRepo, followerRepo)
+	groupService := services.NewGroupService(groupRepo, userRepo, followerRepo, notificationRepo)
 
 	// 4. websocket hub — manages live connections
 	hub := ws.NewHub()
@@ -57,11 +59,12 @@ func New() (*App, error) {
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	oauthHandler := handlers.NewOAuthHandler(oauthService, sessionService)
 	chatHandler := handlers.NewChatHandler(chatService, hub)
+	groupHandler := handlers.NewGroupHandler(groupService, hub)
 
 	// 6. routes
 	mux := http.NewServeMux()
 
-	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, sessionService)
+	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, groupHandler, sessionService)
 	log.Println("app initialised")
 
 	return &App{Router: mux}, nil

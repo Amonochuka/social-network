@@ -83,3 +83,24 @@ func (h *Hub) IsOnline(userID string) bool {
 	defer h.mu.RUnlock()
 	return len(h.clients[userID]) > 0
 }
+
+// SendToGroup delivers a message to every connected member of a group.
+func (h *Hub) SendToGroup(memberIDs []string, payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("ws: failed to marshal group payload:", err)
+		return
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for _, userID := range memberIDs {
+		for _, client := range h.clients[userID] {
+			select {
+			case client.Send <- data:
+			default:
+				log.Printf("ws: send buffer full for user %s in group broadcast, dropping", userID)
+			}
+		}
+	}
+}
+

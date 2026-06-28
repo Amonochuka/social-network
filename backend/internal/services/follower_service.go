@@ -54,7 +54,20 @@ func (s *FollowerService) SendFollowRequest(senderID, receiverID string) error {
 		return errors.New("already following this user")
 	}
 
-	// All rules passed — create the follow request
+	// Rule 5 — if the receiver has a public profile, bypass the request flow
+	receiver, err := s.userRepo.GetUserByID(receiverID)
+	if err != nil {
+		return errors.New("receiver not found")
+	}
+	if receiver.IsPublic {
+		// directly create the follower relationship — no request needed
+		if err := s.followerRepo.CreateFollower(senderID, receiverID); err != nil {
+			return errors.New("could not follow user")
+		}
+		return nil
+	}
+
+	// Private profile — create a follow request and notify the receiver
 	req := &models.FollowRequest{
 		ID:         uuid.New().String(),
 		SenderID:   senderID,

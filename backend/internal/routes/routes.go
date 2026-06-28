@@ -15,6 +15,7 @@ func Register(
 	notificationHandler *handlers.NotificationHandler,
 	oauthHandler *handlers.OAuthHandler,
 	chatHandler *handlers.ChatHandler,
+	groupHandler *handlers.GroupHandler,
 	sessionService *services.SessionService,
 ) {
 	auth := middleware.NewAuthMiddleware(sessionService)
@@ -68,4 +69,49 @@ func Register(
 	mux.Handle("/api/chat/private/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetPrivateMessages)))
 	mux.Handle("/api/chat/ws", auth.Authenticate(http.HandlerFunc(chatHandler.ServeWebSocket)))
 	mux.Handle("/api/chat/conversations", auth.Authenticate(http.HandlerFunc(chatHandler.GetConversations)))
+
+	// Group Routes
+	mux.Handle("/api/groups", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			groupHandler.CreateGroup(w, r)
+		} else {
+			groupHandler.ListGroups(w, r)
+		}
+	})))
+	mux.Handle("/api/groups/{group_id}", auth.Authenticate(http.HandlerFunc(groupHandler.GetGroup)))
+	mux.Handle("/api/groups/{group_id}/invite", auth.Authenticate(http.HandlerFunc(groupHandler.InviteUser)))
+	mux.Handle("/api/groups/{group_id}/join", auth.Authenticate(http.HandlerFunc(groupHandler.RequestToJoin)))
+	mux.Handle("/api/groups/{group_id}/events", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			groupHandler.CreateEvent(w, r)
+		} else {
+			groupHandler.GetEvents(w, r)
+		}
+	})))
+	mux.Handle("/api/groups/events/{event_id}/rsvp", auth.Authenticate(http.HandlerFunc(groupHandler.RSVPEvent)))
+	mux.Handle("/api/groups/{group_id}/posts", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			groupHandler.CreateGroupPost(w, r)
+		} else {
+			groupHandler.GetGroupPosts(w, r)
+		}
+	})))
+	mux.Handle("/api/groups/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			groupHandler.CreateGroupComment(w, r)
+		} else {
+			groupHandler.GetGroupComments(w, r)
+		}
+	})))
+	mux.Handle("/api/groups/{group_id}/chat", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			groupHandler.SendGroupMessage(w, r)
+		} else {
+			groupHandler.GetGroupMessages(w, r)
+		}
+	})))
+	mux.Handle("/api/groups/invitations/{inv_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptInvitation)))
+	mux.Handle("/api/groups/invitations/{inv_id}/decline", auth.Authenticate(http.HandlerFunc(groupHandler.DeclineInvitation)))
+	mux.Handle("/api/groups/requests/{req_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptJoinRequest)))
+	mux.Handle("/api/groups/requests/{req_id}/decline", auth.Authenticate(http.HandlerFunc(groupHandler.DeclineJoinRequest)))
 }

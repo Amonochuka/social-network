@@ -62,3 +62,44 @@ type ChatRepository interface {
 	GetGroupMessages(groupID string) ([]*models.GroupMessageDetail, error)
 	GetConversations(userID string) ([]*models.ConversationPreview, error)
 }
+
+type GroupRepository interface {
+	// groups
+	CreateGroup(group *models.Group) error
+	GetGroupByID(groupID string) (*models.Group, error)
+	GetAllGroups() ([]*models.Group, error)
+	// members
+	AddMember(groupID, userID string) error
+	RemoveMember(groupID, userID string) error
+	IsMember(groupID, userID string) (bool, error)
+	GetMembers(groupID string) ([]*models.MemberProfile, error)
+	GetMemberIDs(groupID string) ([]string, error)
+	// invitations
+	CreateInvitation(inv *models.GroupInvitation) error
+	GetInvitationByID(invID string) (*models.GroupInvitation, error)
+	GetPendingInvitation(groupID, inviteeID string) (*models.GroupInvitation, error)
+	UpdateInvitationStatus(invID, status string) error
+	// join requests
+	CreateJoinRequest(req *models.GroupRequest) error
+	GetJoinRequestByID(reqID string) (*models.GroupRequest, error)
+	GetPendingJoinRequest(groupID, userID string) (*models.GroupRequest, error)
+	UpdateJoinRequestStatus(reqID, status string) error
+	// events
+	CreateEvent(event *models.Event) error
+	GetEventsByGroupID(groupID string) ([]*models.Event, error)
+	GetEventByID(eventID string) (*models.Event, error)
+	UpsertEventResponse(eventID, userID, response string) error
+	GetEventResponses(eventID string) (going int, notGoing int, err error)
+	GetMyEventResponse(eventID, userID string) (string, error)
+	// group posts
+	CreateGroupPost(post *models.GroupPost) error
+	GetGroupPosts(groupID string) ([]*models.GroupPostDetail, error)
+	CreateGroupComment(comment *models.GroupComment) error
+	GetGroupComments(groupPostID string) ([]*models.GroupCommentDetail, error)
+	// group chat
+	CreateGroupChatMessage(msg *models.GroupMessage) error
+	GetGroupChatMessages(groupID string) ([]*models.GroupMessageDetailFull, error)
+	// invitation status helpers
+	GetInvitationStatus(groupID, userID string) (string, error)
+	GetJoinRequestStatus(groupID, userID string) (string, error)
+}
