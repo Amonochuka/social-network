@@ -270,10 +270,9 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={updating}
-                className="group/btn relative overflow-hidden bg-[--primary-theme] hover:bg-[#129c94] transition-colors text-white text-sm font-bold px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(20,175,167,0.3)] disabled:opacity-70 disabled:cursor-not-allowed"
+                className="group relative overflow-hidden bg-[--primary-theme] hover:bg-[#129c94] transition-colors text-white text-sm font-bold px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(20,175,167,0.3)] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 <span className="relative z-10">Save Changes</span>
-                <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]" />
               </button>
             </div>
           </form>
@@ -407,13 +406,6 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-      
-      {/* Required keyframes for animations */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes shimmer {
-          100% { transform: translateX(100%); }
-        }
-      `}} />
     </main>
   );
 }
