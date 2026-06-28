@@ -48,13 +48,13 @@ export default function NavSideBar() {
 
           return (
             <Link
-              href={isLogout ? "#" : `/view/${v.text}`}
+              href={v.href}
               key={v.id}
               onClick={isLogout ? handleLogout : undefined}
               style={
                 v.text === "Home" && (path === "/" || path === "/view/Home")
                   ? activeRoute
-                  : path === "/view/" + v.text
+                  : path === v.href
                     ? activeRoute
                     : nonActive
               }
