@@ -46,7 +46,7 @@ func New() (*App, error) {
 	postService := services.NewPostService(postRepo, followerRepo, notificationRepo, userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
 	oauthService := services.NewOAuthService(userRepo, cfg)
-	chatService := services.NewChatService(chatRepo, followerRepo)
+	chatService := services.NewChatService(chatRepo, followerRepo, userRepo)
 	groupService := services.NewGroupService(groupRepo, userRepo, followerRepo, notificationRepo)
 
 	// 4. websocket hub — manages live connections

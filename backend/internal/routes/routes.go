@@ -69,7 +69,8 @@ func Register(
 	mux.Handle("/api/chat/private/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetPrivateMessages)))
 	mux.Handle("/api/chat/ws", auth.Authenticate(http.HandlerFunc(chatHandler.ServeWebSocket)))
 	mux.Handle("/api/chat/conversations", auth.Authenticate(http.HandlerFunc(chatHandler.GetConversations)))
-
+	mux.Handle("/api/chat/partner/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetChatPartnerInfo)))
+	
 	// Group Routes
 	mux.Handle("/api/groups", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {

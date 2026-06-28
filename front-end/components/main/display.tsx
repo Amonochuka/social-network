@@ -1,3 +1,5 @@
+"use client"
+
 import UserPostUI from "../allPosts/allPosts";
 import { Follow } from "../sidebar/follow";
 import NavSideBar from "../sidebar/sidebar";
@@ -9,10 +11,10 @@ import { authSelector } from "@/store/features/authSlice";
 export default function HomeDisplayLayout() {
     const { user } = useSelector(authSelector);
     const avatarUrl = user?.avatar
-      ? user.avatar.startsWith("http")
-        ? user.avatar
-        : `http://localhost:8080/${user.avatar}`
-      : undefined;
+        ? user.avatar.startsWith("http")
+            ? user.avatar
+            : `http://localhost:8080/${user.avatar}`
+        : undefined;
     const fullName = user ? `${user.first_name} ${user.last_name}` : "?";
 
     return (
@@ -33,7 +35,7 @@ export default function HomeDisplayLayout() {
                         <UserProfileImage url={avatarUrl} name={fullName} />
                     </div>
                 </div>
-                
+
                 {/* Posts Feed */}
                 <div className="w-full flex-1 pb-20 sm:pb-0">
                     <UserPostUI />
@@ -45,7 +47,7 @@ export default function HomeDisplayLayout() {
                 <div className="sticky top-4 flex flex-col gap-6">
                     {/* Search Bar */}
                     <SearchUI className="w-full" />
-                    
+
                     {/* Follow widget */}
                     <div className="bg-[#16181c] rounded-2xl border border-white/5 overflow-hidden">
                         <h2 className="px-4 pt-4 pb-2 text-xl font-extrabold text-white">Who to follow</h2>

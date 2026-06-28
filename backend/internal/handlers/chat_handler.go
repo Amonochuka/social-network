@@ -112,3 +112,48 @@ func (h *ChatHandler) GetConversations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(conversations)
 }
+
+type chatPartnerInfo struct {
+	ID        string `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Avatar    string `json:"avatar"`
+}
+
+// GetChatPartnerInfo handles GET /api/chat/partner/{user_id}
+// Returns basic profile info needed for the chat header, regardless of
+// the target user's profile privacy setting — visibility here is governed
+// by the chat permission rule (CanChat), not the profile privacy rule.
+func (h *ChatHandler) GetChatPartnerInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+	otherUserID := r.PathValue("user_id")
+
+	if otherUserID == "" {
+		http.Error(w, "user_id is required", http.StatusBadRequest)
+		return
+	}
+
+	canChat, err := h.chatService.CanChat(userID, otherUserID)
+	if err != nil {
+		http.Error(w, "could not verify chat permission", http.StatusInternalServerError)
+		return
+	}
+	if !canChat {
+		http.Error(w, "you must follow or be followed by this user to chat", http.StatusForbidden)
+		return
+	}
+
+	info, err := h.chatService.GetPartnerInfo(otherUserID)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(info)
+}

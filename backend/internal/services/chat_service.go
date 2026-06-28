@@ -9,12 +9,14 @@ import (
 type ChatService struct {
 	chatRepo     interfaces.ChatRepository
 	followerRepo interfaces.FollowerRepository
+	userRepo     interfaces.UserRepository
 }
 
-func NewChatService(chatRepo interfaces.ChatRepository, followerRepo interfaces.FollowerRepository) *ChatService {
+func NewChatService(chatRepo interfaces.ChatRepository, followerRepo interfaces.FollowerRepository, userRepo interfaces.UserRepository) *ChatService {
 	return &ChatService{
 		chatRepo:     chatRepo,
 		followerRepo: followerRepo,
+		userRepo:     userRepo,
 	}
 }
 
@@ -83,4 +85,16 @@ func (s *ChatService) GetConversations(userID string) ([]*models.ConversationPre
 		return nil, errors.New("could not get conversations")
 	}
 	return conversations, nil
+}
+
+// GetPartnerInfo returns basic profile info for the chat header.
+// This bypasses profile privacy intentionally — visibility for chat purposes
+// is governed by CanChat (the follow-based rule), not the profile privacy setting.
+// Callers must call CanChat themselves before calling this.
+func (s *ChatService) GetPartnerInfo(userID string) (*models.User, error) {
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	return user, nil
 }
