@@ -67,4 +67,5 @@ func Register(
 	mux.Handle("/api/chat/private", auth.Authenticate(http.HandlerFunc(chatHandler.SendPrivateMessage)))
 	mux.Handle("/api/chat/private/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetPrivateMessages)))
 	mux.Handle("/api/chat/ws", auth.Authenticate(http.HandlerFunc(chatHandler.ServeWebSocket)))
+	mux.Handle("/api/chat/conversations", auth.Authenticate(http.HandlerFunc(chatHandler.GetConversations)))
 }

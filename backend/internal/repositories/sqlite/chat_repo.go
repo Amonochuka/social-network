@@ -97,3 +97,44 @@ func (r *chatRepository) GetGroupMessages(groupID string) ([]*models.GroupMessag
 	}
 	return messages, nil
 }
+
+func (r *chatRepository) GetConversations(userID string) ([]*models.ConversationPreview, error) {
+	rows, err := r.db.Query(`
+		SELECT
+			other_user.id,
+			other_user.first_name,
+			other_user.last_name,
+			other_user.avatar,
+			last_msg.content,
+			last_msg.created_at
+		FROM (
+			SELECT
+				CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END AS other_user_id,
+				MAX(created_at) AS last_created_at
+			FROM private_messages
+			WHERE sender_id = ? OR receiver_id = ?
+			GROUP BY other_user_id
+		) AS convo
+		JOIN users other_user ON other_user.id = convo.other_user_id
+		JOIN private_messages last_msg ON (
+			(last_msg.sender_id = ? AND last_msg.receiver_id = convo.other_user_id)
+			OR (last_msg.sender_id = convo.other_user_id AND last_msg.receiver_id = ?)
+		) AND last_msg.created_at = convo.last_created_at
+		ORDER BY convo.last_created_at DESC
+	`, userID, userID, userID, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var conversations []*models.ConversationPreview
+	for rows.Next() {
+		var c models.ConversationPreview
+		err := rows.Scan(&c.UserID, &c.FirstName, &c.LastName, &c.Avatar, &c.LastMessage, &c.LastMessageAt)
+		if err != nil {
+			return nil, err
+		}
+		conversations = append(conversations, &c)
+	}
+	return conversations, nil
+}

@@ -76,3 +76,11 @@ func (s *ChatService) GetPrivateMessages(userA, userB string) ([]*models.Private
 	}
 	return messages, nil
 }
+
+func (s *ChatService) GetConversations(userID string) ([]*models.ConversationPreview, error) {
+	conversations, err := s.chatRepo.GetConversations(userID)
+	if err != nil {
+		return nil, errors.New("could not get conversations")
+	}
+	return conversations, nil
+}

@@ -60,4 +60,5 @@ type ChatRepository interface {
 	// group messages
 	CreateGroupMessage(msg *models.GroupMessage) error
 	GetGroupMessages(groupID string) ([]*models.GroupMessageDetail, error)
+	GetConversations(userID string) ([]*models.ConversationPreview, error)
 }

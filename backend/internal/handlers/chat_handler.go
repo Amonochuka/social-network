@@ -93,3 +93,22 @@ func (h *ChatHandler) ServeWebSocket(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
 	ws.ServeWS(h.hub, w, r, userID)
 }
+
+// GetConversations handles GET /api/chat/conversations
+func (h *ChatHandler) GetConversations(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := r.Context().Value(middleware.UserIDKey).(string)
+
+	conversations, err := h.chatService.GetConversations(userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(conversations)
+}

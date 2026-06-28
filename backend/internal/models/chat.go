@@ -37,3 +37,12 @@ type GroupMessageDetail struct {
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+
+type ConversationPreview struct {
+	UserID       string    `json:"user_id"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	Avatar       string    `json:"avatar"`
+	LastMessage  string    `json:"last_message"`
+	LastMessageAt time.Time `json:"last_message_at"`
+}
