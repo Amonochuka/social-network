@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend-data:/app/uploads
+      - backend-db:/app/backend/pkg/db
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL:-http://localhost:8080/api/auth/google/callback}
+
+  frontend:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_DEV_BASE_URL=http://backend:8080/api
+      - NEXT_PUBLIC_WS_DEV_CHAT_URL=ws://localhost:8080/api/chat/ws
+
+volumes:
+  backend-data:
+  backend-db:
