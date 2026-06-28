@@ -87,14 +87,28 @@ func (s *ChatService) GetConversations(userID string) ([]*models.ConversationPre
 	return conversations, nil
 }
 
+type ChatPartnerInfo struct {
+	ID        string `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Avatar    string `json:"avatar"`
+}
+
 // GetPartnerInfo returns basic profile info for the chat header.
 // This bypasses profile privacy intentionally — visibility for chat purposes
 // is governed by CanChat (the follow-based rule), not the profile privacy setting.
 // Callers must call CanChat themselves before calling this.
-func (s *ChatService) GetPartnerInfo(userID string) (*models.User, error) {
+// Never returns the full User struct — that would leak the password hash.
+func (s *ChatService) GetPartnerInfo(userID string) (*ChatPartnerInfo, error) {
 	user, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
-	return user, nil
+
+	return &ChatPartnerInfo{
+		ID:        user.ID,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Avatar:    user.Avatar,
+	}, nil
 }

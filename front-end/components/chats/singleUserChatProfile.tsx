@@ -59,7 +59,7 @@ export function ChatUser() {
 
     const fetchProfile = async () => {
       try {
-        const res = await Api.get(`/profile/${userId}`);
+        const res = await Api.get(`/chat/partner/${userId}`);
         setProfile(res.data);
       } catch (err) {
         console.error("Failed to load chat profile:", err);
