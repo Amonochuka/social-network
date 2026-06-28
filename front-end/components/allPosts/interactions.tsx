@@ -10,10 +10,56 @@ interface Props {
   likes: number;
   comments: number;
   postId: string;
+  postDetails?: {
+    id: string;
+    author_name: string;
+    author_avatar?: string;
+    privacy: string;
+    created_at: string;
+    content: string;
+    media_path?: string;
+    comment_count: number;
+  };
 }
 
-export function PostInteractions({ likes, comments, postId }: Props) {
+export function PostInteractions({ likes, comments, postId, postDetails }: Props) {
   const [showComments, setShowComments] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const bookmarks = JSON.parse(localStorage.getItem("saved_posts") || "[]");
+      setIsBookmarked(bookmarks.some((b: any) => b.id === postId));
+    } catch {
+      setIsBookmarked(false);
+    }
+  }, [postId]);
+
+  const handleBookmark = () => {
+    try {
+      const bookmarks = JSON.parse(localStorage.getItem("saved_posts") || "[]");
+      const index = bookmarks.findIndex((b: any) => b.id === postId);
+      let updated = [];
+      if (index > -1) {
+        updated = bookmarks.filter((b: any) => b.id !== postId);
+        setIsBookmarked(false);
+      } else {
+        const itemToSave = postDetails || {
+          id: postId,
+          content: "",
+          author_name: "User",
+          created_at: new Date().toISOString(),
+          comment_count: comments,
+          privacy: "public"
+        };
+        updated = [...bookmarks, itemToSave];
+        setIsBookmarked(true);
+      }
+      localStorage.setItem("saved_posts", JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to update bookmark:", err);
+    }
+  };
 
   return (
     <div>
@@ -32,8 +78,12 @@ export function PostInteractions({ likes, comments, postId }: Props) {
             <span>{comments}</span>
           </div>
         </div>
-        <span>
-          <BookMarkedIcon size={24} />
+        <span onClick={handleBookmark} style={{ cursor: "pointer" }}>
+          <BookMarkedIcon
+            size={24}
+            className={isBookmarked ? "text-[--primary-theme]" : "text-gray-400"}
+            fill={isBookmarked ? "currentColor" : "none"}
+          />
         </span>
       </div>
 

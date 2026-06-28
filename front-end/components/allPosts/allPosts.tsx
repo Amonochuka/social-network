@@ -379,6 +379,7 @@ export function AllPostUI({ refreshKey }: { refreshKey: number }) {
             }
             likes={0}
             comments={post.comment_count}
+            postDetails={post}
           />
         </div>
       ))}
@@ -424,9 +425,10 @@ interface ContentInterface {
   postImage?: string;
   likes: number;
   comments: number;
+  postDetails?: any;
 }
 
-export function UserPostContent({ postId, description, postImage, likes, comments }: ContentInterface) {
+export function UserPostContent({ postId, description, postImage, likes, comments, postDetails }: ContentInterface) {
   const imageStyle: CSSProperties = {
     objectFit: "cover",
     borderRadius: "0.5rem",
@@ -456,7 +458,7 @@ export function UserPostContent({ postId, description, postImage, likes, comment
         )}
 
         <div>
-          <PostInteractions postId={postId} comments={comments} likes={likes} />
+          <PostInteractions postId={postId} comments={comments} likes={likes} postDetails={postDetails} />
         </div>
       </div>
     </div>
