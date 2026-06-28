@@ -2,10 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import UserProfileImage from "../header/profile/userProfile";
-import style from "@/styles/all-post.module.css";
-import { Button } from "../ui/button";
-import { ButtonData } from "@/types";
-import { createPostBtn } from "@/styles/style";
 import {
   Clapperboard,
   Eye,
@@ -16,6 +12,7 @@ import {
   Lock,
   X,
   Check,
+  MoreHorizontal,
 } from "lucide-react";
 import Image from "next/image";
 import { CSSProperties } from "react";
@@ -23,12 +20,6 @@ import { PostInteractions } from "./interactions";
 import { Api } from "@/services/axios";
 import { useAppSelector } from "@/store/hooks";
 import { authSelector } from "@/store/features/authSlice";
-
-const data: ButtonData = {
-  text: "create post",
-  type: "button",
-  style: createPostBtn,
-};
 
 interface FeedPost {
   id: string;
@@ -72,7 +63,6 @@ export default function UserPostUI() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
 
-  // load followers for private post picker
   useEffect(() => {
     if (privacy === "private") {
       Api.get<FollowerOption[]>("/followers")
@@ -105,7 +95,7 @@ export default function UserPostUI() {
   };
 
   const handleCreatePost = async () => {
-    if (!postText.trim() || posting) return;
+    if ((!postText.trim() && !mediaFile) || posting) return;
     setPosting(true);
 
     try {
@@ -146,173 +136,145 @@ export default function UserPostUI() {
   const myFullName = user ? `${user.first_name} ${user.last_name}` : "?";
 
   const privacyLabels = {
-    public: { icon: Globe, label: "Public" },
-    almost_private: { icon: Users, label: "Followers Only" },
-    private: { icon: Lock, label: "Selected Followers" },
+    public: { icon: Globe, label: "Everyone can reply" },
+    almost_private: { icon: Users, label: "Followers only" },
+    private: { icon: Lock, label: "Selected followers" },
   };
 
   const PrivacyIcon = privacyLabels[privacy].icon;
 
   return (
-    <div className={style.postParentCont}>
-      <div className={style.postHomeCont}>
-        <div className={style.postHomeMain}>
+    <div className="flex flex-col w-full border-t border-white/10 sm:border-t-0">
+      {/* Create Post Box (X Style) */}
+      <div className="flex gap-4 p-4 border-b border-white/10">
+        <div className="shrink-0 pt-1">
           <UserProfileImage url={myAvatarUrl} name={myFullName} />
-          <input
-            className={style.postData}
-            type="text"
-            placeholder="what's on your mind"
-            name="postData"
-            value={postText}
-            onChange={(e) => setPostText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreatePost()}
-          />
-          <Button
-            data={{
-              ...data,
-              text: posting ? "posting..." : "create post",
-              onClick: handleCreatePost,
-            }}
-          />
         </div>
+        <div className="flex flex-col w-full pt-1">
+          <textarea
+            className="w-full bg-transparent text-xl outline-none placeholder:text-gray-500 resize-none overflow-hidden min-h-[50px]"
+            placeholder="What is happening?!"
+            value={postText}
+            onChange={(e) => {
+              setPostText(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = e.target.scrollHeight + "px";
+            }}
+            rows={1}
+          />
 
-        {/* Media preview */}
-        {mediaPreview && (
-          <div style={{ position: "relative", margin: "0.75rem 0.5rem", maxWidth: "200px" }}>
-            <img
-              src={mediaPreview}
-              alt="preview"
-              style={{ width: "100%", borderRadius: "0.5rem", objectFit: "cover", maxHeight: "150px" }}
-            />
-            <button
-              onClick={removeMedia}
-              style={{
-                position: "absolute", top: 4, right: 4,
-                background: "rgba(0,0,0,0.7)", border: "none",
-                borderRadius: "50%", padding: "3px", cursor: "pointer", color: "white",
-              }}
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
+          {mediaPreview && (
+            <div className="relative mt-3 w-full rounded-2xl overflow-hidden border border-white/10">
+              <img
+                src={mediaPreview}
+                alt="preview"
+                className="w-full max-h-[500px] object-cover"
+              />
+              <button
+                onClick={removeMedia}
+                className="absolute top-2 right-2 bg-black/70 hover:bg-black/90 p-1.5 rounded-full backdrop-blur-md transition-colors"
+              >
+                <X size={18} className="text-white" />
+              </button>
+            </div>
+          )}
 
-        {/* Icons row */}
-        <div className={style.iconPostDisplay}>
-          <div
-            className={style.iconFlex}
-            onClick={() => fileInputRef.current?.click()}
-            style={{ cursor: "pointer" }}
-          >
-            <LucideImage />
-            <span>photos</span>
-          </div>
-          <div
-            className={style.iconFlex}
-            onClick={() => fileInputRef.current?.click()}
-            style={{ cursor: "pointer" }}
-          >
-            <Clapperboard />
-            <span>videos</span>
-          </div>
-
-          {/* Privacy selector */}
-          <div style={{ position: "relative", marginLeft: "auto" }}>
-            <button
+          {/* Privacy & Follower Picker Section */}
+          <div className="mt-3 relative w-fit border-b border-white/10 pb-3 mb-2">
+             <button
               onClick={() => setShowPrivacyMenu((p) => !p)}
-              style={{
-                display: "flex", alignItems: "center", gap: "0.4rem",
-                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "0.5rem", padding: "0.4rem 0.75rem",
-                color: "var(--primary-theme)", fontSize: "0.8rem", fontWeight: 600,
-                cursor: "pointer",
-              }}
+              className="flex items-center gap-1.5 text-[--primary-theme] text-sm font-bold hover:bg-[--primary-theme]/10 rounded-full px-3 py-1 -ml-3 transition-colors"
             >
-              <PrivacyIcon size={14} />
+              <PrivacyIcon size={16} />
               {privacyLabels[privacy].label}
             </button>
 
             {showPrivacyMenu && (
-              <div
-                style={{
-                  position: "absolute", top: "100%", right: 0, marginTop: "0.25rem",
-                  background: "#2a2a2a", border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "0.5rem", overflow: "hidden", zIndex: 50, minWidth: "180px",
-                }}
-              >
+              <div className="absolute top-full left-0 mt-1 bg-black shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/20 rounded-xl overflow-hidden z-50 min-w-[220px]">
                 {(["public", "almost_private", "private"] as const).map((p) => {
                   const Icon = privacyLabels[p].icon;
                   return (
                     <button
                       key={p}
                       onClick={() => { setPrivacy(p); setShowPrivacyMenu(false); }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "0.5rem",
-                        width: "100%", padding: "0.6rem 0.75rem",
-                        background: privacy === p ? "rgba(255,255,255,0.08)" : "transparent",
-                        border: "none", color: "#e5e7eb", fontSize: "0.85rem",
-                        cursor: "pointer", textAlign: "left",
-                      }}
+                      className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/5 transition-colors text-left"
                     >
-                      <Icon size={14} />
-                      {privacyLabels[p].label}
-                      {privacy === p && <Check size={14} style={{ marginLeft: "auto", color: "var(--primary-theme)" }} />}
+                      <div className={`p-2 rounded-full ${privacy === p ? 'bg-[--primary-theme] text-white' : 'bg-white/10 text-white'}`}>
+                         <Icon size={18} />
+                      </div>
+                      <span className="text-sm font-bold text-white flex-1">{privacyLabels[p].label}</span>
+                      {privacy === p && <Check size={18} className="text-[--primary-theme]" />}
                     </button>
                   );
                 })}
               </div>
             )}
           </div>
-        </div>
 
-        {/* Follower picker for private posts */}
-        {showFollowerPicker && (
-          <div style={{
-            margin: "0.75rem 0.5rem", padding: "0.75rem",
-            background: "rgba(255,255,255,0.04)", borderRadius: "0.5rem",
-            border: "1px solid rgba(255,255,255,0.08)",
-          }}>
-            <p style={{ fontSize: "0.8rem", color: "#9ca3af", marginBottom: "0.5rem" }}>
-              Select followers who can see this post:
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-              {followers.length === 0 ? (
-                <p style={{ fontSize: "0.75rem", color: "#666" }}>No followers yet.</p>
-              ) : (
-                followers.map((f) => {
-                  const selected = selectedFollowers.includes(f.user_id);
-                  return (
-                    <button
-                      key={f.user_id}
-                      onClick={() => toggleFollower(f.user_id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "0.35rem",
-                        padding: "0.3rem 0.6rem", borderRadius: "1rem",
-                        background: selected ? "var(--primary-theme)" : "rgba(255,255,255,0.08)",
-                        color: selected ? "#000" : "#e5e7eb",
-                        border: "none", fontSize: "0.78rem", fontWeight: 500,
-                        cursor: "pointer", transition: "all 0.15s",
-                      }}
-                    >
-                      {f.first_name} {f.last_name}
-                      {selected && <Check size={12} />}
-                    </button>
-                  );
-                })
-              )}
+          {showFollowerPicker && (
+            <div className="mb-3 p-3 bg-white/5 rounded-xl border border-white/10">
+              <p className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Select followers</p>
+              <div className="flex flex-wrap gap-2">
+                {followers.length === 0 ? (
+                  <p className="text-sm text-gray-500">No followers yet.</p>
+                ) : (
+                  followers.map((f) => {
+                    const selected = selectedFollowers.includes(f.user_id);
+                    return (
+                      <button
+                        key={f.user_id}
+                        onClick={() => toggleFollower(f.user_id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                          selected 
+                            ? "bg-[--primary-theme]/20 border-[--primary-theme] text-[--primary-theme]" 
+                            : "bg-transparent border-white/20 text-gray-300 hover:bg-white/5"
+                        }`}
+                      >
+                        {f.first_name} {f.last_name}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,video/mp4"
-          onChange={handleMediaSelect}
-          hidden
-        />
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-1 -ml-2">
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 rounded-full hover:bg-[--primary-theme]/10 text-[--primary-theme] transition-colors"
+                title="Media"
+              >
+                <LucideImage size={20} />
+              </button>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 rounded-full hover:bg-[--primary-theme]/10 text-[--primary-theme] transition-colors hidden sm:block"
+                title="Video"
+              >
+                <Clapperboard size={20} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,video/mp4"
+                onChange={handleMediaSelect}
+                hidden
+              />
+            </div>
+            
+            <button
+              onClick={handleCreatePost}
+              disabled={posting || (!postText.trim() && !mediaFile)}
+              className="bg-[--primary-theme] hover:bg-[#129c94] text-white font-bold py-2 px-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {posting ? "Posting..." : "Post"}
+            </button>
+          </div>
+        </div>
       </div>
+
       <AllPostUI refreshKey={refreshKey} />
     </div>
   );
@@ -339,140 +301,83 @@ export function AllPostUI({ refreshKey }: { refreshKey: number }) {
   }, [refreshKey]);
 
   if (loading) {
-    return <div className={style.AllPostLayout}>Loading feed...</div>;
+    return <div className="p-8 text-center text-gray-500 font-medium animate-pulse">Loading feed...</div>;
   }
 
   if (posts.length === 0) {
     return (
-      <div className={style.AllPostLayout}>
-        <p style={{ textAlign: "center", color: "#888", padding: "2rem" }}>
-          No posts yet. Follow people to see their posts here.
-        </p>
+      <div className="p-8 text-center border-b border-white/10">
+        <h2 className="text-xl font-extrabold mb-2 text-white">Welcome to your timeline</h2>
+        <p className="text-gray-500 text-sm">When you follow people, you'll see the posts they share here.</p>
       </div>
     );
   }
 
   return (
-    <div className={style.AllPostLayout}>
+    <div className="flex flex-col w-full">
       {posts.map((post) => (
-        <div key={post.id} className={style.userPostDisplay}>
-          <UserPostProfile
-            userImage={
-              post.author_avatar
-                ? post.author_avatar.startsWith("http")
-                  ? post.author_avatar
-                  : `http://localhost:8080/${post.author_avatar}`
-                : undefined
-            }
-            fullName={post.author_name}
-            status={post.privacy}
-            datePosted={new Date(post.created_at).toLocaleDateString()}
-            privacy={post.privacy}
-          />
-          <UserPostContent
-            postId={post.id}
-            description={post.content}
-            postImage={
-              post.media_path
-                ? `http://localhost:8080/${post.media_path}`
-                : undefined
-            }
-            likes={0}
-            comments={post.comment_count}
-            postDetails={post}
-          />
-        </div>
+        <UserPostContent key={post.id} post={post} />
       ))}
     </div>
   );
 }
 
-interface Props {
-  userImage?: string;
-  fullName: string;
-  status: string;
-  datePosted: string;
-  privacy: string;
-}
-
-export function UserPostProfile({
-  userImage,
-  fullName,
-  status,
-  datePosted,
-  privacy,
-}: Props) {
-  return (
-    <div className={style.postUserProfile}>
-      <div className={style.userImageName}>
-        <UserProfileImage url={userImage} name={fullName} />
-        <span className={style.userPostProfile}>
-          <p>{fullName}</p>
-          <p>posted on {datePosted}</p>
-        </span>
-      </div>
-      <div className={style.userPrivacy}>
-        {privacy === "public" ? <Eye /> : <LockIcon />}
-        {status}
-      </div>
-    </div>
-  );
-}
-
-interface ContentInterface {
-  postId: string;
-  description: string;
-  postImage?: string;
-  likes: number;
-  comments: number;
-  postDetails?: any;
-}
-
-export function UserPostContent({ postId, description, postImage, likes, comments, postDetails }: ContentInterface) {
-  const imageStyle: CSSProperties = {
-    objectFit: "cover",
-    borderRadius: "0.5rem",
-  };
+export function UserPostContent({ post }: { post: FeedPost }) {
+  const avatarUrl = post.author_avatar
+    ? post.author_avatar.startsWith("http")
+      ? post.author_avatar
+      : `http://localhost:8080/${post.author_avatar}`
+    : undefined;
 
   return (
-    <div className={style.postContMain}>
-      <div className={style.postContMain}>
-        {postImage ? (
-          <>
-            <div>
-              <p className={style.postDesscription}>{description}</p>
-            </div>
+    <article className="flex gap-3 p-4 border-b border-white/10 hover:bg-white/[0.02] transition-colors cursor-pointer">
+      <div className="shrink-0">
+        <UserProfileImage url={avatarUrl} name={post.author_name} />
+      </div>
+      <div className="flex flex-col w-full min-w-0">
+        {/* Header Info */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            <span className="font-bold text-white truncate hover:underline">{post.author_name}</span>
+            <span className="text-sm text-gray-500 shrink-0">·</span>
+            <span className="text-sm text-gray-500 shrink-0 hover:underline">
+               {new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </span>
+          </div>
+          
+          <button className="text-gray-500 hover:text-[--primary-theme] hover:bg-[--primary-theme]/10 p-1.5 rounded-full transition-colors shrink-0">
+            <MoreHorizontal size={18} />
+          </button>
+        </div>
 
-            <div className={style.postsImageCont}>
-              <Image
-                src={postImage}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                style={imageStyle}
-                alt="post image"
-              />
-            </div>
-          </>
-        ) : (
-          <PostDescriptionUI description={description} />
+        {/* Content */}
+        <div className="mt-1 text-[15px] leading-relaxed text-white whitespace-pre-wrap break-words">
+          {post.content}
+        </div>
+
+        {/* Media */}
+        {post.media_path && (
+          <div className="mt-3 relative w-full rounded-2xl overflow-hidden border border-white/10">
+            <Image
+              src={`http://localhost:8080/${post.media_path}`}
+              width={600}
+              height={400}
+              className="w-full h-auto object-cover max-h-[500px]"
+              alt="Post attachment"
+            />
+          </div>
         )}
 
-        <div>
-          <PostInteractions postId={postId} comments={comments} likes={likes} postDetails={postDetails} />
+        {/* Interactions */}
+        <div className="mt-3">
+          <PostInteractions 
+            postId={post.id} 
+            comments={post.comment_count} 
+            likes={0} 
+            postDetails={post} 
+          />
         </div>
       </div>
-    </div>
-  );
-}
-
-interface DescriptionProps {
-  description: string;
-}
-
-export function PostDescriptionUI({ description }: DescriptionProps) {
-  return (
-    <div>
-      <p className={style.shoutDescription}>{description}</p>
-    </div>
+    </article>
   );
 }

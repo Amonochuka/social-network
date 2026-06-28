@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { BookMarkedIcon, Heart, MessageCircleReply } from "lucide-react";
-import style from "@/styles/interactions.module.css";
 import { Api } from "@/services/axios";
 import UserProfileImage from "../header/profile/userProfile";
 
@@ -62,29 +61,42 @@ export function PostInteractions({ likes, comments, postId, postDetails }: Props
   };
 
   return (
-    <div>
-      <div className={style.displayInteractions}>
-        <div className={style.likeCommentCont}>
-          <div className={style.likeComment}>
-            <Heart size={24} />
-            <span>{likes}</span>
-          </div>
-          <div
-            className={style.likeComment}
+    <div className="w-full">
+      <div className="flex items-center justify-between mt-1 text-gray-500 w-full max-w-md">
+        <div className="flex items-center gap-12">
+          {/* Like Button */}
+          <button className="group flex items-center gap-1.5 transition-colors">
+            <div className="p-2 rounded-full group-hover:bg-pink-500/10 group-hover:text-pink-500 transition-colors">
+              <Heart size={18} />
+            </div>
+            <span className="text-sm font-medium group-hover:text-pink-500 transition-colors">{likes}</span>
+          </button>
+          
+          {/* Comment Button */}
+          <button 
             onClick={() => setShowComments((prev) => !prev)}
-            style={{ cursor: "pointer" }}
+            className="group flex items-center gap-1.5 transition-colors"
           >
-            <MessageCircleReply size={24} />
-            <span>{comments}</span>
-          </div>
+            <div className="p-2 rounded-full group-hover:bg-[--primary-theme]/10 group-hover:text-[--primary-theme] transition-colors">
+              <MessageCircleReply size={18} />
+            </div>
+            <span className="text-sm font-medium group-hover:text-[--primary-theme] transition-colors">{comments}</span>
+          </button>
         </div>
-        <span onClick={handleBookmark} style={{ cursor: "pointer" }}>
-          <BookMarkedIcon
-            size={24}
-            className={isBookmarked ? "text-[--primary-theme]" : "text-gray-400"}
-            fill={isBookmarked ? "currentColor" : "none"}
-          />
-        </span>
+
+        {/* Bookmark Button */}
+        <button 
+          onClick={handleBookmark}
+          className="group flex items-center transition-colors"
+        >
+          <div className="p-2 rounded-full group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors">
+            <BookMarkedIcon
+              size={18}
+              className={isBookmarked ? "text-blue-500" : "text-gray-500 group-hover:text-blue-500"}
+              fill={isBookmarked ? "currentColor" : "none"}
+            />
+          </div>
+        </button>
       </div>
 
       {showComments && <CommentsSectionUI postId={postId} />}
@@ -150,47 +162,52 @@ export function CommentsSectionUI({ postId }: { postId: string }) {
   };
 
   return (
-    <div className={style.commentsSection}>
+    <div className="mt-3 pt-3 border-t border-white/10 flex flex-col gap-4">
       {loading ? (
-        <p className={style.commentLoading}>Loading comments...</p>
+        <p className="text-sm text-gray-500 animate-pulse text-center">Loading comments...</p>
       ) : comments.length === 0 ? (
-        <p className={style.commentLoading}>No comments yet.</p>
+        <p className="text-sm text-gray-500 text-center">No comments yet.</p>
       ) : (
-        comments.map((c) => (
-          <div key={c.id} className={style.commentRow}>
-            <UserProfileImage
-              url={
-                c.author_avatar
-                  ? c.author_avatar.startsWith("http")
-                    ? c.author_avatar
-                    : `http://localhost:8080/${c.author_avatar}`
-                  : undefined
-              }
-              name={c.author_name}
-            />
-            <div className={style.commentBody}>
-              <p className={style.commentAuthor}>{c.author_name}</p>
-              <p className={style.commentText}>{c.content}</p>
+        <div className="flex flex-col gap-4">
+          {comments.map((c) => (
+            <div key={c.id} className="flex gap-2">
+              <div className="shrink-0 pt-0.5">
+                <UserProfileImage
+                  url={
+                    c.author_avatar
+                      ? c.author_avatar.startsWith("http")
+                        ? c.author_avatar
+                        : `http://localhost:8080/${c.author_avatar}`
+                      : undefined
+                  }
+                  name={c.author_name}
+                />
+              </div>
+              <div className="flex flex-col min-w-0 bg-white/5 rounded-2xl px-4 py-2 text-sm max-w-full">
+                <p className="font-bold text-white truncate">{c.author_name}</p>
+                <p className="text-white mt-0.5 break-words">{c.content}</p>
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
-      <div className={style.commentInputRow}>
+      {/* Add Comment Input */}
+      <div className="flex items-center gap-3 mt-2">
         <input
-          className={style.commentInput}
+          className="flex-1 bg-transparent border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-[--primary-theme]"
           type="text"
-          placeholder="Write a comment..."
+          placeholder="Post your reply..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
         />
         <button
-          className={style.commentSendBtn}
+          className="bg-[--primary-theme] hover:bg-[#129c94] text-white font-bold text-sm px-5 py-2 rounded-full transition-colors disabled:opacity-50"
           onClick={handleAddComment}
-          disabled={posting}
+          disabled={posting || !text.trim()}
         >
-          {posting ? "..." : "Send"}
+          {posting ? "..." : "Reply"}
         </button>
       </div>
     </div>

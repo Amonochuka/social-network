@@ -7,6 +7,8 @@ import {
   Calendar,
   X,
   Camera,
+  Eye,
+  Lock,
 } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { authSelector, setSession } from "@/store/features/authSlice";
@@ -42,6 +44,8 @@ export default function ProfilePage() {
   const [isPublic, setIsPublic] = useState(user?.is_public ?? true);
   const [updating, setUpdating] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [pendingPrivacyVal, setPendingPrivacyVal] = useState<boolean | null>(null);
 
   // stats
   const [followers, setFollowers] = useState<FollowerProfile[]>([]);
@@ -78,18 +82,28 @@ export default function ProfilePage() {
     );
   }
 
-  const handlePrivacyToggle = async () => {
+  const handlePrivacyToggle = () => {
     if (updating) return;
+    setPendingPrivacyVal(!isPublic);
+    setShowPrivacyModal(true);
+  };
+
+  const confirmPrivacyToggle = async () => {
+    if (pendingPrivacyVal === null) return;
     setUpdating(true);
 
-    const newValue = !isPublic;
     try {
-      await Api.put("/profile/privacy", { is_public: newValue });
-      setIsPublic(newValue);
+      await Api.put("/profile/privacy", { is_public: pendingPrivacyVal });
+      setIsPublic(pendingPrivacyVal);
+      if (user) {
+        dispatch(setSession({ ...user, is_public: pendingPrivacyVal }));
+      }
+      setShowPrivacyModal(false);
     } catch (err) {
       console.error("Failed to update privacy:", err);
     } finally {
       setUpdating(false);
+      setPendingPrivacyVal(null);
     }
   };
 
@@ -126,16 +140,14 @@ export default function ProfilePage() {
               aria-checked={!isPublic}
               disabled={updating}
               onClick={handlePrivacyToggle}
-              className="relative h-5 w-9 shrink-0 rounded-full transition-all duration-200"
-              style={{
-                backgroundColor: isPublic ? "rgba(255, 255, 255, 0.2)" : "var(--primary-theme, #14afa7)"
-              }}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 ease-in-out ${
+                isPublic ? "bg-[--primary-theme]" : "bg-white/20"
+              }`}
             >
               <span
-                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-200"
-                style={{
-                  transform: isPublic ? "translateX(0px)" : "translateX(16px)"
-                }}
+                className={`absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out flex items-center justify-center ${
+                  isPublic ? "translate-x-5" : "translate-x-0"
+                }`}
               />
             </button>
           </div>
@@ -243,6 +255,57 @@ export default function ProfilePage() {
             setShowEditModal(false);
           }}
         />
+      )}
+
+      {/* Privacy Confirmation Modal */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#1e1e1e] border border-white/10 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl transform transition-all scale-100 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start justify-between mb-5">
+              <div className="p-3 rounded-full bg-[--primary-theme]/10 text-[--primary-theme]">
+                {pendingPrivacyVal ? <Eye size={28} /> : <Lock size={28} />}
+              </div>
+              <button 
+                onClick={() => {
+                  setShowPrivacyModal(false);
+                  setPendingPrivacyVal(null);
+                }}
+                className="p-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <h3 className="text-2xl font-bold text-white mb-2">
+              Make Account {pendingPrivacyVal ? "Public" : "Private"}?
+            </h3>
+            
+            <p className="text-sm text-gray-400 mb-8 leading-relaxed">
+              {pendingPrivacyVal 
+                ? "Your profile will become public. Anyone will be able to see your posts, followers, and following list without needing your approval." 
+                : "Your profile will become private. Only approved followers will be able to see your posts and profile details. Existing followers won't be affected."}
+            </p>
+            
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowPrivacyModal(false);
+                  setPendingPrivacyVal(null);
+                }}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPrivacyToggle}
+                disabled={updating}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-[--primary-theme] hover:bg-[#129c94] transition-colors shadow-lg disabled:opacity-50"
+              >
+                {updating ? "Updating..." : "Confirm Change"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
