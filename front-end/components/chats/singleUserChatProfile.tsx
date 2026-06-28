@@ -53,6 +53,7 @@ export function ChatUser() {
 
   const [profile, setProfile] = useState<ChatProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -61,9 +62,11 @@ export function ChatUser() {
       try {
         const res = await Api.get(`/chat/partner/${userId}`);
         setProfile(res.data);
-      } catch (err) {
+        setForbidden(false);
+      } catch (err: any) {
         console.error("Failed to load chat profile:", err);
         setProfile(null);
+        setForbidden(err?.response?.status === 403);
       } finally {
         setLoading(false);
       }
@@ -93,8 +96,10 @@ export function ChatUser() {
 
   if (!profile) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        User not found
+      <div className="flex items-center justify-center h-screen text-gray-400 text-center px-6">
+        {forbidden
+          ? "You can't message this user. You must follow each other to chat."
+          : "User not found"}
       </div>
     );
   }
