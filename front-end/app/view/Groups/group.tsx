@@ -1,80 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Plus,
-  Lock,
-  Globe2,
   Users,
+  X,
 } from "lucide-react";
+import { Api } from "@/services/axios";
+import Link from "next/link";
 
-type Group = {
+interface Group {
   id: string;
-  name: string;
-  emoji: string;
-  members: string;
-  privacy: "Public" | "Private";
-  image: string;
-};
-
-const GROUPS: Group[] = [
-  {
-    id: "photography",
-    name: "Photography Lovers",
-    emoji: "📸",
-    members: "1.8K members",
-    privacy: "Public",
-    image:
-      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=300&q=80",
-  },
-  {
-    id: "travel",
-    name: "Travel The World",
-    emoji: "✈️",
-    members: "2.3K members",
-    privacy: "Public",
-    image:
-      "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=300&q=80",
-  },
-  {
-    id: "books",
-    name: "Book Club",
-    emoji: "📚",
-    members: "986 members",
-    privacy: "Private",
-    image:
-      "https://images.unsplash.com/photo-1524578271613-d550eacf6090?w=300&q=80",
-  },
-  {
-    id: "fitness",
-    name: "Fitness & Health",
-    emoji: "💪",
-    members: "1.2K members",
-    privacy: "Public",
-    image:
-      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&q=80",
-  },
-  {
-    id: "gaming",
-    name: "Game Night",
-    emoji: "🎮",
-    members: "745 members",
-    privacy: "Private",
-    image:
-      "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300&q=80",
-  },
-];
+  creator_id: string;
+  title: string;
+  description: string;
+  created_at: string;
+}
 
 export default function GroupsPage() {
   const [query, setQuery] = useState("");
-  const [joined, setJoined] = useState<Record<string, boolean>>({});
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const fetchGroups = async () => {
+    try {
+      const res = await Api.get<Group[]>("/groups");
+      setGroups(res.data ?? []);
+    } catch (err) {
+      console.error("Failed to load groups:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
 
   const filteredGroups = useMemo(() => {
-    return GROUPS.filter((group) =>
-      group.name.toLowerCase().includes(query.toLowerCase())
+    return groups.filter((group) =>
+      group.title.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, groups]);
 
   return (
     <main className="h-full w-full px-8 py-6">
@@ -85,13 +54,13 @@ export default function GroupsPage() {
             <h1 className="text-3xl font-bold text-white">
               Groups
             </h1>
-
             <p className="mt-1 text-sm text-muted">
               Discover and join communities.
             </p>
           </div>
 
           <button
+            onClick={() => setShowCreateModal(true)}
             className="
               flex items-center gap-2
               rounded-xl
@@ -142,12 +111,13 @@ export default function GroupsPage() {
 
         {/* Group List */}
         <div className="flex-1 overflow-y-auto">
-          <div className="space-y-4">
-            {filteredGroups.map((group) => {
-              const isJoined = joined[group.id];
-
-              return (
-                <div
+          {loading ? (
+            <div className="py-16 text-center text-muted">Loading groups...</div>
+          ) : (
+            <div className="space-y-4">
+              {filteredGroups.map((group) => (
+                <Link
+                  href={`/view/Groups/${group.id}`}
                   key={group.id}
                   className="
                     flex items-center gap-5
@@ -157,86 +127,142 @@ export default function GroupsPage() {
                     p-5
                     transition-colors duration-200
                     hover:bg-(--fade-background)
+                    no-underline
                   "
+                  style={{ textDecoration: "none" }}
                 >
-                  {/* Thumbnail */}
-                  <img
-                    src={group.image}
-                    alt={group.name}
-                    className="h-16 w-16 rounded-xl object-cover"
-                  />
+                  {/* Icon placeholder */}
+                  <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center shrink-0">
+                    <Users size={28} className="text-white" />
+                  </div>
 
                   {/* Details */}
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-base font-semibold text-white">
-                      {group.name} {group.emoji}
+                      {group.title}
                     </h3>
-
+                    <p className="mt-1 text-sm text-gray-400 line-clamp-1">
+                      {group.description}
+                    </p>
                     <div className="mt-2 flex items-center gap-2 text-sm text-muted">
-                      <Users size={14} />
-
-                      <span>{group.members}</span>
-
-                      <span className="text-muted-dim">•</span>
-
-                      <span className="inline-flex items-center gap-1">
-                        {group.privacy === "Public" ? (
-                          <Globe2 size={13} />
-                        ) : (
-                          <Lock size={13} />
-                        )}
-
-                        {group.privacy}
+                      <span className="text-xs text-gray-500">
+                        Created {new Date(group.created_at).toLocaleDateString()}
                       </span>
                     </div>
                   </div>
+                </Link>
+              ))}
 
-                  {/* Join Button */}
-                  <button
-                    onClick={() =>
-                      setJoined((prev) => ({
-                        ...prev,
-                        [group.id]: !prev[group.id],
-                      }))
-                    }
-                    className={
-                      isJoined
-                        ? `
-                          min-w-24
-                          rounded-xl
-                          border border-white/10
-                          px-4 py-2.5
-                          text-sm font-semibold
-                          text-muted
-                          transition-colors
-                          hover:text-white
-                        `
-                        : `
-                          min-w-24
-                          rounded-xl
-                          bg-(--primary-theme)
-                          px-4 py-2.5
-                          text-sm font-semibold
-                          text-white
-                          transition-opacity
-                          hover:opacity-90
-                        `
-                    }
-                  >
-                    {isJoined ? "Joined" : "Join"}
-                  </button>
+              {filteredGroups.length === 0 && !loading && (
+                <div className="py-16 text-center text-muted">
+                  {query ? `No groups found for "${query}"` : "No groups yet. Create the first one!"}
                 </div>
-              );
-            })}
-
-            {filteredGroups.length === 0 && (
-              <div className="py-16 text-center text-muted">
-                No groups found for "{query}"
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
+
+      {showCreateModal && (
+        <CreateGroupModal
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(group) => {
+            setGroups((prev) => [group, ...prev]);
+            setShowCreateModal(false);
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+interface CreateGroupModalProps {
+  onClose: () => void;
+  onCreated: (group: Group) => void;
+}
+
+function CreateGroupModal({ onClose, onCreated }: CreateGroupModalProps) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCreate = async () => {
+    if (!title.trim() || !description.trim()) {
+      setError("Title and description are required.");
+      return;
+    }
+    setCreating(true);
+    setError(null);
+
+    try {
+      const res = await Api.post("/groups", { title, description });
+      onCreated(res.data);
+    } catch (err) {
+      console.error("Failed to create group:", err);
+      setError("Failed to create group. Please try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-[#1e1e1e] p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">Create Group</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-white/5 hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs text-gray-400">Group name</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Photography Lovers"
+              className="w-full rounded-lg bg-[#262626] px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-gray-400">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this group about?"
+              rows={3}
+              className="w-full resize-none rounded-lg bg-[#262626] px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-[--primary-theme]"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-white/5"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            className="rounded-lg bg-[--primary-theme] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50"
+          >
+            {creating ? "Creating..." : "Create Group"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

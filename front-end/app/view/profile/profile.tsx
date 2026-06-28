@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MoreHorizontal,
   Pencil,
@@ -11,6 +11,29 @@ import {
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { authSelector, setSession } from "@/store/features/authSlice";
 import { Api } from "@/services/axios";
+import Image from "next/image";
+import Link from "next/link";
+
+interface FeedPost {
+  id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string;
+  content: string;
+  media_path: string;
+  media_type: string;
+  privacy: string;
+  comment_count: number;
+  created_at: string;
+}
+
+interface FollowerProfile {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  avatar: string;
+  nickname: string;
+}
 
 export default function ProfilePage() {
   const { user } = useAppSelector(authSelector);
@@ -19,6 +42,33 @@ export default function ProfilePage() {
   const [isPublic, setIsPublic] = useState(user?.is_public ?? true);
   const [updating, setUpdating] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // stats
+  const [followers, setFollowers] = useState<FollowerProfile[]>([]);
+  const [following, setFollowing] = useState<FollowerProfile[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchStats = async () => {
+      try {
+        const [followersRes, followingRes, postsRes] = await Promise.all([
+          Api.get<FollowerProfile[]>("/followers"),
+          Api.get<FollowerProfile[]>("/following"),
+          Api.get<FeedPost[]>(`/users/${user.id}/posts`),
+        ]);
+        setFollowers(followersRes.data ?? []);
+        setFollowing(followingRes.data ?? []);
+        setPosts(postsRes.data ?? []);
+      } catch (err) {
+        console.error("Failed to load profile stats:", err);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    fetchStats();
+  }, [user]);
 
   if (!user) {
     return (
@@ -66,7 +116,7 @@ export default function ProfilePage() {
             <MoreHorizontal size={17} />
           </button>
 
-          {/* private profile toggle — wired to real backend */}
+          {/* private profile toggle */}
           <div className="flex items-center gap-2 rounded-xl border border-white/20 bg-black/30 px-3 py-1.5 backdrop-blur-sm">
             <span className="text-xs font-medium text-white/80">
               {isPublic ? "Public Profile" : "Private Profile"}
@@ -128,13 +178,59 @@ export default function ProfilePage() {
             Born {new Date(user.date_of_birth).toLocaleDateString()}
           </div>
         )}
+
+        {/* Stats row */}
+        <div className="mt-5 flex gap-6">
+          <div className="flex flex-col items-center">
+            <span className="text-xl font-bold text-white">{posts.length}</span>
+            <span className="text-xs text-gray-500">Posts</span>
+          </div>
+          <Link href="/view/Network" className="flex flex-col items-center hover:opacity-80 transition">
+            <span className="text-xl font-bold text-white">{followers.length}</span>
+            <span className="text-xs text-gray-500">Followers</span>
+          </Link>
+          <Link href="/view/Network" className="flex flex-col items-center hover:opacity-80 transition">
+            <span className="text-xl font-bold text-white">{following.length}</span>
+            <span className="text-xs text-gray-500">Following</span>
+          </Link>
+        </div>
       </div>
 
-      {/* posts/followers will be wired in next */}
+      {/* ── own posts ── */}
       <div className="flex-1 p-6">
-        <div className="rounded-2xl bg-[#222] p-8 text-center text-sm text-gray-500">
-          Posts, followers, and following counts coming next.
-        </div>
+        {statsLoading ? (
+          <div className="rounded-2xl bg-[#222] p-8 text-center text-sm text-gray-500">
+            Loading posts...
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="rounded-2xl bg-[#222] p-8 text-center text-sm text-gray-500">
+            No posts yet. Create your first post from the Home page.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {posts.map((post) => (
+              <div key={post.id} className="rounded-xl bg-[#222] p-5 border border-white/5">
+                <p className="text-sm text-gray-300 leading-relaxed">{post.content}</p>
+                {post.media_path && (
+                  <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden">
+                    <Image
+                      src={`http://localhost:8080/${post.media_path}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      style={{ objectFit: "cover" }}
+                      alt="post media"
+                    />
+                  </div>
+                )}
+                <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                  <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                  <span>{post.comment_count} comments</span>
+                  <span className="capitalize">{post.privacy}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {showEditModal && (
