@@ -2,156 +2,77 @@ package services
 
 import (
 	"errors"
-	"sync"
-	"time"
-	
-	"github.com/google/uuid"
 	"social-network/backend/internal/models"
+	"social-network/backend/internal/repositories/interfaces"
 )
 
 type ChatService struct {
-	mu    sync.RWMutex
-	chats map[string]*models.Chat
+	chatRepo     interfaces.ChatRepository
+	followerRepo interfaces.FollowerRepository
 }
 
-func NewChatService() *ChatService {
+func NewChatService(chatRepo interfaces.ChatRepository, followerRepo interfaces.FollowerRepository) *ChatService {
 	return &ChatService{
-		chats: make(map[string]*models.Chat),
+		chatRepo:     chatRepo,
+		followerRepo: followerRepo,
 	}
 }
 
-func (s *ChatService) CreateDirectChat(user1ID, user2ID string) (*models.Chat, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	
-	// Check if direct chat already exists
-	for _, chat := range s.chats {
-		if chat.Type == "direct" {
-			hasUser1 := false
-			hasUser2 := false
-			for _, p := range chat.Participants {
-				if p == user1ID {
-					hasUser1 = true
-				}
-				if p == user2ID {
-					hasUser2 = true
-				}
-			}
-			if hasUser1 && hasUser2 && len(chat.Participants) == 2 {
-				return chat, nil
-			}
-		}
+// CanChat checks the spec's rule: at least one of the two users must follow the other.
+func (s *ChatService) CanChat(userA, userB string) (bool, error) {
+	aFollowsB, err := s.followerRepo.IsFollowing(userA, userB)
+	if err != nil {
+		return false, err
 	}
-	
-	chat := &models.Chat{
-		ID:           uuid.New().String(),
-		Type:         "direct",
-		CreatedBy:    user1ID,
-		CreatedAt:    time.Now(),
-		Participants: []string{user1ID, user2ID},
-		IsActive:     true,
+	if aFollowsB {
+		return true, nil
 	}
-	
-	s.chats[chat.ID] = chat
-	return chat, nil
+
+	bFollowsA, err := s.followerRepo.IsFollowing(userB, userA)
+	if err != nil {
+		return false, err
+	}
+	return bFollowsA, nil
 }
 
-func (s *ChatService) CreateGroupChat(name, creatorID string, participantIDs []string) (*models.Chat, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	
-	// Ensure creator is in participants
-	participants := []string{creatorID}
-	for _, p := range participantIDs {
-		if p != creatorID {
-			participants = append(participants, p)
-		}
+func (s *ChatService) SendPrivateMessage(senderID, receiverID, content string) (*models.PrivateMessage, error) {
+	if senderID == receiverID {
+		return nil, errors.New("cannot message yourself")
 	}
-	
-	chat := &models.Chat{
-		ID:           uuid.New().String(),
-		Name:         name,
-		Type:         "group",
-		CreatedBy:    creatorID,
-		CreatedAt:    time.Now(),
-		Participants: participants,
-		IsActive:     true,
+
+	canChat, err := s.CanChat(senderID, receiverID)
+	if err != nil {
+		return nil, errors.New("could not verify chat permission")
 	}
-	
-	s.chats[chat.ID] = chat
-	return chat, nil
+	if !canChat {
+		return nil, errors.New("you must follow or be followed by this user to chat")
+	}
+
+	msg := &models.PrivateMessage{
+		SenderID:   senderID,
+		ReceiverID: receiverID,
+		Content:    content,
+	}
+
+	if err := s.chatRepo.CreatePrivateMessage(msg); err != nil {
+		return nil, errors.New("could not send message")
+	}
+
+	return msg, nil
 }
 
-func (s *ChatService) GetChat(chatID string) (*models.Chat, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	
-	chat, exists := s.chats[chatID]
-	if !exists {
-		return nil, errors.New("chat not found")
+func (s *ChatService) GetPrivateMessages(userA, userB string) ([]*models.PrivateMessageDetail, error) {
+	canChat, err := s.CanChat(userA, userB)
+	if err != nil {
+		return nil, errors.New("could not verify chat permission")
 	}
-	return chat, nil
-}
+	if !canChat {
+		return nil, errors.New("you must follow or be followed by this user to view this chat")
+	}
 
-func (s *ChatService) GetUserChats(userID string) ([]*models.Chat, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	
-	var userChats []*models.Chat
-	for _, chat := range s.chats {
-		for _, participant := range chat.Participants {
-			if participant == userID {
-				userChats = append(userChats, chat)
-				break
-			}
-		}
+	messages, err := s.chatRepo.GetPrivateMessages(userA, userB)
+	if err != nil {
+		return nil, errors.New("could not get messages")
 	}
-	return userChats, nil
-}
-
-func (s *ChatService) AddParticipant(chatID, userID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	
-	chat, exists := s.chats[chatID]
-	if !exists {
-		return errors.New("chat not found")
-	}
-	
-	if chat.Type != "group" {
-		return errors.New("only group chats can have participants added")
-	}
-	
-	// Check if already participant
-	for _, p := range chat.Participants {
-		if p == userID {
-			return nil
-		}
-	}
-	
-	chat.Participants = append(chat.Participants, userID)
-	return nil
-}
-
-func (s *ChatService) RemoveParticipant(chatID, userID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	
-	chat, exists := s.chats[chatID]
-	if !exists {
-		return errors.New("chat not found")
-	}
-	
-	if chat.Type != "group" {
-		return errors.New("only group chats can have participants removed")
-	}
-	
-	var participants []string
-	for _, p := range chat.Participants {
-		if p != userID {
-			participants = append(participants, p)
-		}
-	}
-	chat.Participants = participants
-	return nil
+	return messages, nil
 }

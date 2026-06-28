@@ -14,6 +14,7 @@ func Register(
 	postHandler *handlers.PostHandler,
 	notificationHandler *handlers.NotificationHandler,
 	oauthHandler *handlers.OAuthHandler,
+	chatHandler *handlers.ChatHandler,
 	sessionService *services.SessionService,
 ) {
 	auth := middleware.NewAuthMiddleware(sessionService)
@@ -61,4 +62,9 @@ func Register(
 	// Private Notification Routes
 	mux.Handle("/api/notifications", auth.Authenticate(http.HandlerFunc(notificationHandler.GetNotifications)))
 	mux.Handle("/api/notifications/{notification_id}/read", auth.Authenticate(http.HandlerFunc(notificationHandler.MarkAsRead)))
+
+	// Private Chat Routes
+	mux.Handle("/api/chat/private", auth.Authenticate(http.HandlerFunc(chatHandler.SendPrivateMessage)))
+	mux.Handle("/api/chat/private/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetPrivateMessages)))
+	mux.Handle("/api/chat/ws", auth.Authenticate(http.HandlerFunc(chatHandler.ServeWebSocket)))
 }

@@ -52,3 +52,12 @@ type PostRepository interface {
 	CreateComment(comment *models.Comment) error
 	GetCommentsByPostID(postID string) ([]*models.CommentDetail, error)
 }
+
+type ChatRepository interface {
+	// private messages
+	CreatePrivateMessage(msg *models.PrivateMessage) error
+	GetPrivateMessages(userA, userB string) ([]*models.PrivateMessageDetail, error)
+	// group messages
+	CreateGroupMessage(msg *models.GroupMessage) error
+	GetGroupMessages(groupID string) ([]*models.GroupMessageDetail, error)
+}

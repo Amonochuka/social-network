@@ -10,6 +10,7 @@ import (
 	repoSqlite "social-network/backend/internal/repositories/sqlite"
 	"social-network/backend/internal/routes"
 	"social-network/backend/internal/services"
+	"social-network/backend/internal/ws"
 	dbSqlite "social-network/backend/pkg/db/sqlite"
 )
 
@@ -35,6 +36,7 @@ func New() (*App, error) {
 	followerRepo := repoSqlite.NewFollowerRepository(db)
 	notificationRepo := repoSqlite.NewNotificationRepository(db)
 	postRepo := repoSqlite.NewPostRepository(db)
+	chatRepo := repoSqlite.NewChatRepository(db)
 
 	// 3. services
 	userService := services.NewUserService(userRepo, followerRepo)
@@ -43,18 +45,23 @@ func New() (*App, error) {
 	postService := services.NewPostService(postRepo, followerRepo, notificationRepo, userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
 	oauthService := services.NewOAuthService(userRepo, cfg)
+	chatService := services.NewChatService(chatRepo, followerRepo)
 
-	// 4. handlers
+	// 4. websocket hub — manages live connections
+	hub := ws.NewHub()
+
+	// 5. handlers
 	authHandler := handlers.NewAuthHandler(userService, sessionService)
 	followerHandler := handlers.NewFollowerHandler(followerService)
 	postHandler := handlers.NewPostHandler(postService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	oauthHandler := handlers.NewOAuthHandler(oauthService, sessionService)
+	chatHandler := handlers.NewChatHandler(chatService, hub)
 
-	// 5. routes
+	// 6. routes
 	mux := http.NewServeMux()
 
-	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, sessionService)
+	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, sessionService)
 	log.Println("app initialised")
 
 	return &App{Router: mux}, nil
