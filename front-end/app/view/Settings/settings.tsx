@@ -116,14 +116,16 @@ export default function SettingsPage() {
               <button
                 onClick={handlePrivacyToggle}
                 disabled={updating}
-                className={`relative h-7 w-12 rounded-full transition-colors shrink-0 ${
-                  isPublic ? "bg-[--primary-theme]" : "bg-white/10"
-                } disabled:opacity-50`}
+                className="relative h-7 w-12 rounded-full transition-all shrink-0 disabled:opacity-50"
+                style={{
+                  backgroundColor: isPublic ? "var(--primary-theme, #14afa7)" : "rgba(255, 255, 255, 0.1)"
+                }}
               >
                 <span
-                  className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-md transition-transform ${
-                    isPublic ? "translate-x-[22px]" : "translate-x-0.5"
-                  }`}
+                  className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-md transition-all duration-200"
+                  style={{
+                    transform: isPublic ? "translateX(20px)" : "translateX(2px)"
+                  }}
                 />
               </button>
             </div>

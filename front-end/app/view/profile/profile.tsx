@@ -126,14 +126,16 @@ export default function ProfilePage() {
               aria-checked={!isPublic}
               disabled={updating}
               onClick={handlePrivacyToggle}
-              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
-                isPublic ? "bg-white/20" : "bg-[--primary-theme]"
-              } ${updating ? "opacity-50" : ""}`}
+              className="relative h-5 w-9 shrink-0 rounded-full transition-all duration-200"
+              style={{
+                backgroundColor: isPublic ? "rgba(255, 255, 255, 0.2)" : "var(--primary-theme, #14afa7)"
+              }}
             >
               <span
-                className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
-                  isPublic ? "translate-x-0" : "translate-x-4"
-                }`}
+                className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-200"
+                style={{
+                  transform: isPublic ? "translateX(0px)" : "translateX(16px)"
+                }}
               />
             </button>
           </div>
