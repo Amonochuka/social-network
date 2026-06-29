@@ -9,6 +9,7 @@ type UserRepository interface {
 	UpdateUser(user *models.User) error
 	UpdateAvatar(userID, avatarPath string) error
 	UpdatePrivacy(userID string, isPublic bool) error
+	SearchUsers(query, currentUserID string) ([]*models.UserSearchResult, error)
 }
 
 type SessionRepository interface {
@@ -102,4 +103,5 @@ type GroupRepository interface {
 	// invitation status helpers
 	GetInvitationStatus(groupID, userID string) (string, error)
 	GetJoinRequestStatus(groupID, userID string) (string, error)
+	SearchGroups(query string) ([]*models.GroupSearchResult, error)
 }

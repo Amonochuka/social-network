@@ -5,17 +5,24 @@ import (
 	"net/http"
 	"social-network/backend/internal/middleware"
 	"social-network/backend/internal/services"
+	"social-network/backend/internal/ws"
 )
 
 type FollowerHandler struct {
 	followerService *services.FollowerService
+	hub             *ws.Hub
 }
 
-func NewFollowerHandler(followerService *services.FollowerService) *FollowerHandler {
+func NewFollowerHandler(
+	followerService *services.FollowerService,
+	hub *ws.Hub,
+) *FollowerHandler {
 	return &FollowerHandler{
 		followerService: followerService,
+		hub:             hub,
 	}
 }
+
 func (h *FollowerHandler) SendFollowRequest(w http.ResponseWriter, r *http.Request) {
 
 	//step 1 only allow POST

@@ -47,28 +47,27 @@ func New() (*App, error) {
 	userService := services.NewUserService(userRepo, followerRepo)
 	sessionService := services.NewSessionService(sessionRepo)
 	followerService := services.NewFollowerService(followerRepo, userRepo, notificationRepo)
-	followerService.SetHub(hub)
 	postService := services.NewPostService(postRepo, followerRepo, notificationRepo, userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
 	oauthService := services.NewOAuthService(userRepo, cfg)
 	chatService := services.NewChatService(chatRepo, followerRepo, userRepo)
 	groupService := services.NewGroupService(groupRepo, userRepo, followerRepo, notificationRepo)
+	searchService := services.NewSearchService(userRepo, groupRepo)
 
-	
 	// 5. handlers
 	authHandler := handlers.NewAuthHandler(userService, sessionService)
-	followerHandler := handlers.NewFollowerHandler(followerService)
+	followerHandler := handlers.NewFollowerHandler(followerService, hub)
 	postHandler := handlers.NewPostHandler(postService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	oauthHandler := handlers.NewOAuthHandler(oauthService, sessionService)
 	chatHandler := handlers.NewChatHandler(chatService, hub)
 	groupHandler := handlers.NewGroupHandler(groupService, hub)
+	searchHandler := handlers.NewSearchHandler(searchService)
 
-	
 	// 6. routes
 	mux := http.NewServeMux()
 
-	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, groupHandler, sessionService)
+	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, groupHandler, searchHandler, sessionService,)
 	log.Println("app initialised")
 	return &App{Router: mux, Hub: hub}, nil
 }
@@ -80,4 +79,3 @@ func (a *App) ChainMiddlewares() http.Handler {
 	)
 	return nextMiddleware
 }
-

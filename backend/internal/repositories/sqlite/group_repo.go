@@ -2,11 +2,11 @@ package sqlite
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"social-network/backend/internal/models"
-
-	"github.com/google/uuid"
+	//"github.com/google/uuid"
 )
 
 type GroupRepository struct {
@@ -48,6 +48,51 @@ func (r *GroupRepository) GetAllGroups() ([]*models.Group, error) {
 		groups = append(groups, g)
 	}
 	return groups, nil
+}
+
+func (r *GroupRepository) SearchGroups(query string) ([]*models.GroupSearchResult, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return []*models.GroupSearchResult{}, nil
+	}
+
+	search := "%" + strings.ToLower(query) + "%"
+
+	rows, err := r.db.Query(`
+		SELECT
+			id,
+			title,
+			COALESCE(description, '')
+		FROM groups
+		WHERE
+			LOWER(title) LIKE ?
+			OR LOWER(COALESCE(description, '')) LIKE ?
+		ORDER BY title
+		LIMIT 20
+	`, search, search)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []*models.GroupSearchResult
+
+	for rows.Next() {
+		g := &models.GroupSearchResult{}
+
+		if err := rows.Scan(
+			&g.ID,
+			&g.Title,
+			&g.Description,
+		); err != nil {
+			return nil, err
+		}
+
+		groups = append(groups, g)
+	}
+
+	return groups, rows.Err()
 }
 
 // ── Members ─────────────────────────────────────────────────────────────────
@@ -384,8 +429,7 @@ func (r *GroupRepository) GetGroupChatMessages(groupID string) ([]*models.GroupM
 	return messages, nil
 }
 
-
 // NewGroupID returns a new UUID string.
-func NewGroupID() string {
-	return uuid.New().String()
-}
+// func NewGroupID() string {
+// 	return uuid.New().String()
+// }

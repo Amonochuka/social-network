@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
 	"social-network/backend/internal/services"
@@ -16,6 +17,7 @@ func Register(
 	oauthHandler *handlers.OAuthHandler,
 	chatHandler *handlers.ChatHandler,
 	groupHandler *handlers.GroupHandler,
+	searchHandler *handlers.SearchHandler,
 	sessionService *services.SessionService,
 ) {
 	auth := middleware.NewAuthMiddleware(sessionService)
@@ -26,23 +28,36 @@ func Register(
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	// ==========================
 	// Public Auth Routes
+	// ==========================
 	mux.HandleFunc("/api/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/auth/login", authHandler.Login)
 	mux.HandleFunc("/api/auth/logout", authHandler.Logout)
 
-	// Google OAuth Routes
+	// ==========================
+	// Google OAuth
+	// ==========================
 	mux.HandleFunc("/api/auth/google", oauthHandler.GoogleLogin)
 	mux.HandleFunc("/api/auth/google/callback", oauthHandler.GoogleCallback)
 
-	// Private Profile Routes
+	// ==========================
+	// Profile Routes
+	// ==========================
 	mux.Handle("/api/auth/me", auth.Authenticate(http.HandlerFunc(authHandler.Me)))
 	mux.Handle("/api/profile/{id}", auth.Authenticate(http.HandlerFunc(authHandler.GetProfile)))
 	mux.Handle("/api/profile", auth.Authenticate(http.HandlerFunc(authHandler.UpdateProfile)))
 	mux.Handle("/api/profile/privacy", auth.Authenticate(http.HandlerFunc(authHandler.UpdatePrivacy)))
 	mux.Handle("/api/profile/avatar", auth.Authenticate(http.HandlerFunc(authHandler.UploadAvatar)))
 
-	// Private Follower Routes
+	// ==========================
+	// Search
+	// ==========================
+	mux.Handle("/api/search", auth.Authenticate(http.HandlerFunc(searchHandler.Search)))
+
+	// ==========================
+	// Follow Routes
+	// ==========================
 	mux.Handle("/api/follow/requests", auth.Authenticate(http.HandlerFunc(followerHandler.SendFollowRequest)))
 	mux.Handle("/api/follow/requests/{request_id}/accept", auth.Authenticate(http.HandlerFunc(followerHandler.AcceptFollowRequest)))
 	mux.Handle("/api/follow/requests/{request_id}/decline", auth.Authenticate(http.HandlerFunc(followerHandler.DeclineFollowRequest)))
@@ -50,7 +65,9 @@ func Register(
 	mux.Handle("/api/followers", auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowers)))
 	mux.Handle("/api/following", auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowing)))
 
-	// Private Post Routes
+	// ==========================
+	// Posts
+	// ==========================
 	mux.Handle("/api/posts", auth.Authenticate(http.HandlerFunc(postHandler.CreatePost)))
 	mux.Handle("/api/posts/feed", auth.Authenticate(http.HandlerFunc(postHandler.GetFeed)))
 	mux.Handle("/api/posts/{post_id}", auth.Authenticate(http.HandlerFunc(postHandler.GetPostByID)))
@@ -60,18 +77,24 @@ func Register(
 	mux.Handle("/api/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(postHandler.CreateComment)))
 	mux.Handle("/api/posts/{post_id}/comments/all", auth.Authenticate(http.HandlerFunc(postHandler.GetCommentsByPostID)))
 
-	// Private Notification Routes
+	// ==========================
+	// Notifications
+	// ==========================
 	mux.Handle("/api/notifications", auth.Authenticate(http.HandlerFunc(notificationHandler.GetNotifications)))
 	mux.Handle("/api/notifications/{notification_id}/read", auth.Authenticate(http.HandlerFunc(notificationHandler.MarkAsRead)))
 
-	// Private Chat Routes
+	// ==========================
+	// Private Chat
+	// ==========================
 	mux.Handle("/api/chat/private", auth.Authenticate(http.HandlerFunc(chatHandler.SendPrivateMessage)))
 	mux.Handle("/api/chat/private/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetPrivateMessages)))
 	mux.Handle("/api/chat/ws", auth.Authenticate(http.HandlerFunc(chatHandler.ServeWebSocket)))
 	mux.Handle("/api/chat/conversations", auth.Authenticate(http.HandlerFunc(chatHandler.GetConversations)))
 	mux.Handle("/api/chat/partner/{user_id}", auth.Authenticate(http.HandlerFunc(chatHandler.GetChatPartnerInfo)))
 
-	// Group Routes
+	// ==========================
+	// Groups
+	// ==========================
 	mux.Handle("/api/groups", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			groupHandler.CreateGroup(w, r)
@@ -79,9 +102,11 @@ func Register(
 			groupHandler.ListGroups(w, r)
 		}
 	})))
+
 	mux.Handle("/api/groups/{group_id}", auth.Authenticate(http.HandlerFunc(groupHandler.GetGroup)))
 	mux.Handle("/api/groups/{group_id}/invite", auth.Authenticate(http.HandlerFunc(groupHandler.InviteUser)))
 	mux.Handle("/api/groups/{group_id}/join", auth.Authenticate(http.HandlerFunc(groupHandler.RequestToJoin)))
+
 	mux.Handle("/api/groups/{group_id}/events", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			groupHandler.CreateEvent(w, r)
@@ -89,7 +114,9 @@ func Register(
 			groupHandler.GetEvents(w, r)
 		}
 	})))
+
 	mux.Handle("/api/groups/events/{event_id}/rsvp", auth.Authenticate(http.HandlerFunc(groupHandler.RSVPEvent)))
+
 	mux.Handle("/api/groups/{group_id}/posts", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			groupHandler.CreateGroupPost(w, r)
@@ -97,6 +124,7 @@ func Register(
 			groupHandler.GetGroupPosts(w, r)
 		}
 	})))
+
 	mux.Handle("/api/groups/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			groupHandler.CreateGroupComment(w, r)
@@ -104,6 +132,7 @@ func Register(
 			groupHandler.GetGroupComments(w, r)
 		}
 	})))
+
 	mux.Handle("/api/groups/{group_id}/chat", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			groupHandler.SendGroupMessage(w, r)
@@ -111,6 +140,7 @@ func Register(
 			groupHandler.GetGroupMessages(w, r)
 		}
 	})))
+
 	mux.Handle("/api/groups/invitations/{inv_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptInvitation)))
 	mux.Handle("/api/groups/invitations/{inv_id}/decline", auth.Authenticate(http.HandlerFunc(groupHandler.DeclineInvitation)))
 	mux.Handle("/api/groups/requests/{req_id}/accept", auth.Authenticate(http.HandlerFunc(groupHandler.AcceptJoinRequest)))
