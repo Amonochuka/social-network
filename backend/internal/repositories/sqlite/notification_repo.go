@@ -2,17 +2,25 @@ package sqlite
 
 import (
 	"database/sql"
+	"encoding/json"
+	"log"
+
+	"social-network/backend/internal/models"
+	"social-network/backend/internal/ws"
 
 	"github.com/google/uuid"
-	"social-network/backend/internal/models"
 )
 
 type notificationRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	hub *ws.Hub // Inject the real-time hub dependency
 }
 
-func NewNotificationRepository(db *sql.DB) *notificationRepository {
-	return &notificationRepository{db: db}
+func NewNotificationRepository(db *sql.DB, hub *ws.Hub) *notificationRepository {
+	return &notificationRepository{
+		db:  db,
+		hub: hub,
+	}
 }
 
 func (r *notificationRepository) CreateNotification(n *models.Notification) error {
@@ -53,8 +61,8 @@ func (r *notificationRepository) GetNotificationsByUserID(userID string) ([]*mod
 
 func (r *notificationRepository) MarkNotificationAsRead(notificationID, userID string) error {
 	_, err := r.db.Exec(`
-		UPDATE notifications SET is_read = 1
-		WHERE id = ? AND user_id = ?
-	`, notificationID, userID)
+                UPDATE notifications SET is_read = 1
+                WHERE id = ? AND user_id = ?
+        `, notificationID, userID)
 	return err
 }

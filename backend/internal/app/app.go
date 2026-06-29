@@ -7,15 +7,18 @@ import (
 	"social-network/backend/internal/config"
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
+	"social-network/backend/internal/middleware"
 	repoSqlite "social-network/backend/internal/repositories/sqlite"
 	"social-network/backend/internal/routes"
 	"social-network/backend/internal/services"
+	"social-network/backend/internal/ws"
 	"social-network/backend/internal/ws"
 	dbSqlite "social-network/backend/pkg/db/sqlite"
 )
 
 type App struct {
 	Router *http.ServeMux
+	Hub    *ws.Hub
 }
 
 func New() (*App, error) {
@@ -30,19 +33,23 @@ func New() (*App, error) {
 		return nil, err
 	}
 
-	// 2. repos
+	// 2. Real-time hub (instantiated early — injected into notification repo)
+	hub := ws.NewHub()
+
+	// 3. repos
 	userRepo := repoSqlite.NewUserRepository(db)
 	sessionRepo := repoSqlite.NewSessionRepository(db)
 	followerRepo := repoSqlite.NewFollowerRepository(db)
-	notificationRepo := repoSqlite.NewNotificationRepository(db)
+	notificationRepo := repoSqlite.NewNotificationRepository(db, hub)
 	postRepo := repoSqlite.NewPostRepository(db)
 	chatRepo := repoSqlite.NewChatRepository(db)
 	groupRepo := repoSqlite.NewGroupRepository(db)
 
-	// 3. services
+	// 4. services
 	userService := services.NewUserService(userRepo, followerRepo)
 	sessionService := services.NewSessionService(sessionRepo)
 	followerService := services.NewFollowerService(followerRepo, userRepo, notificationRepo)
+	followerService.SetHub(hub)
 	postService := services.NewPostService(postRepo, followerRepo, notificationRepo, userRepo)
 	notificationService := services.NewNotificationService(notificationRepo)
 	oauthService := services.NewOAuthService(userRepo, cfg)
@@ -62,12 +69,12 @@ func New() (*App, error) {
 	groupHandler := handlers.NewGroupHandler(groupService, hub)
 
 	// 6. routes
+	// 6. routes
 	mux := http.NewServeMux()
 
 	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, groupHandler, sessionService)
 	log.Println("app initialised")
-
-	return &App{Router: mux}, nil
+	return &App{Router: mux, Hub: hub}, nil
 }
 
 func (a *App) ChainMiddlewares() http.Handler {
@@ -77,3 +84,4 @@ func (a *App) ChainMiddlewares() http.Handler {
 	)
 	return nextMiddleware
 }
+
