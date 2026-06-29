@@ -59,7 +59,7 @@ type ChatRepository interface {
 	GetPrivateMessages(userA, userB string) ([]*models.PrivateMessageDetail, error)
 	// group messages
 	CreateGroupMessage(msg *models.GroupMessage) error
-	GetGroupMessages(groupID string) ([]*models.GroupMessageDetail, error)
+	GetGroupMessages(groupID string) ([]*models.GroupMessageDetailFull, error)
 	GetConversations(userID string) ([]*models.ConversationPreview, error)
 }
 

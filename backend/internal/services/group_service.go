@@ -112,12 +112,6 @@ func (s *GroupService) InviteUser(groupID, inviterID, inviteeID string) error {
 	}
 
 	// notify invitee
-	group, _ := s.groupRepo.GetGroupByID(groupID)
-	groupTitle := ""
-	if group != nil {
-		groupTitle = group.ID
-	}
-	_ = groupTitle
 	s.notificationRepo.CreateNotification(&models.Notification{
 		ID:          uuid.New().String(),
 		UserID:      inviteeID,

@@ -72,7 +72,7 @@ func (r *chatRepository) CreateGroupMessage(msg *models.GroupMessage) error {
 	return err
 }
 
-func (r *chatRepository) GetGroupMessages(groupID string) ([]*models.GroupMessageDetail, error) {
+func (r *chatRepository) GetGroupMessages(groupID string) ([]*models.GroupMessageDetailFull, error) {
 	rows, err := r.db.Query(`
 		SELECT gm.id, gm.group_id, gm.sender_id, u.first_name || ' ' || u.last_name AS sender_name, u.avatar,
 		       gm.content, gm.created_at
@@ -86,9 +86,9 @@ func (r *chatRepository) GetGroupMessages(groupID string) ([]*models.GroupMessag
 	}
 	defer rows.Close()
 
-	var messages []*models.GroupMessageDetail
+	var messages []*models.GroupMessageDetailFull
 	for rows.Next() {
-		var m models.GroupMessageDetail
+		var m models.GroupMessageDetailFull
 		err := rows.Scan(&m.ID, &m.GroupID, &m.SenderID, &m.SenderName, &m.SenderAvatar, &m.Content, &m.CreatedAt)
 		if err != nil {
 			return nil, err

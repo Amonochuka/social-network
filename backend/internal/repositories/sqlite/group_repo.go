@@ -384,29 +384,6 @@ func (r *GroupRepository) GetGroupChatMessages(groupID string) ([]*models.GroupM
 	return messages, nil
 }
 
-// ── Unused interface stubs (satisfy ChatRepository interface) ────────────────
-
-func (r *GroupRepository) CreateGroupMessage(msg *models.GroupMessage) error {
-	return r.CreateGroupChatMessage(msg)
-}
-
-func (r *GroupRepository) GetGroupMessages(groupID string) ([]*models.GroupMessageDetail, error) {
-	// Returns the basic type for backward compatibility — use GetGroupChatMessages for full detail.
-	rows, err := r.db.Query(`SELECT id, group_id, sender_id, content, created_at FROM group_messages WHERE group_id = ? ORDER BY created_at`, groupID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var msgs []*models.GroupMessageDetail
-	for rows.Next() {
-		m := &models.GroupMessageDetail{}
-		if err := rows.Scan(&m.ID, &m.GroupID, &m.SenderID, &m.Content, &m.CreatedAt); err != nil {
-			return nil, err
-		}
-		msgs = append(msgs, m)
-	}
-	return msgs, nil
-}
 
 // NewGroupID returns a new UUID string.
 func NewGroupID() string {

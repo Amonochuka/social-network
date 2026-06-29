@@ -115,19 +115,8 @@ type GroupCommentDetail struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-// ── Group Chat ───────────────────────────────────────────────────────────────
 
-type GroupMessageDetailFull struct {
-	ID           string    `json:"id"`
-	GroupID      string    `json:"group_id"`
-	SenderID     string    `json:"sender_id"`
-	SenderName   string    `json:"sender_name"`
-	SenderAvatar string    `json:"sender_avatar"`
-	Content      string    `json:"content"`
-	CreatedAt    time.Time `json:"created_at"`
-}
 
-// ── Rich group detail (includes member list) ─────────────────────────────────
 
 type MemberProfile struct {
 	UserID    string `json:"user_id"`

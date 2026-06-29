@@ -28,7 +28,7 @@ type GroupMessage struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type GroupMessageDetail struct {
+type GroupMessageDetailFull struct {
 	ID           string    `json:"id"`
 	GroupID      string    `json:"group_id"`
 	SenderID     string    `json:"sender_id"`
