@@ -2,8 +2,6 @@ package sqlite
 
 import (
 	"database/sql"
-	"encoding/json"
-	"log"
 
 	"social-network/backend/internal/models"
 	"social-network/backend/internal/ws"

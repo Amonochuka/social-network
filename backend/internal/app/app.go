@@ -7,11 +7,9 @@ import (
 	"social-network/backend/internal/config"
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
-	"social-network/backend/internal/middleware"
 	repoSqlite "social-network/backend/internal/repositories/sqlite"
 	"social-network/backend/internal/routes"
 	"social-network/backend/internal/services"
-	"social-network/backend/internal/ws"
 	"social-network/backend/internal/ws"
 	dbSqlite "social-network/backend/pkg/db/sqlite"
 )
@@ -56,9 +54,7 @@ func New() (*App, error) {
 	chatService := services.NewChatService(chatRepo, followerRepo, userRepo)
 	groupService := services.NewGroupService(groupRepo, userRepo, followerRepo, notificationRepo)
 
-	// 4. websocket hub — manages live connections
-	hub := ws.NewHub()
-
+	
 	// 5. handlers
 	authHandler := handlers.NewAuthHandler(userService, sessionService)
 	followerHandler := handlers.NewFollowerHandler(followerService)
@@ -68,7 +64,7 @@ func New() (*App, error) {
 	chatHandler := handlers.NewChatHandler(chatService, hub)
 	groupHandler := handlers.NewGroupHandler(groupService, hub)
 
-	// 6. routes
+	
 	// 6. routes
 	mux := http.NewServeMux()
 
