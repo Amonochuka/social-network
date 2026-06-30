@@ -28,48 +28,62 @@ func NewFollowerService(
 	}
 }
 
-func (s *FollowerService) SendFollowRequest(senderID, receiverID string) error {
-	// Rule 1 — does the receiver exist?
+func (s *FollowerService) SendFollowRequest(senderID, receiverID string) (*models.Notification, error) {
+	// Receiver exists?
 	_, err := s.userRepo.GetUserByID(receiverID)
 	if err != nil {
-		return errors.New("receiver not found")
+		return nil, errors.New("receiver not found")
 	}
 
-	// Rule 2 — cannot follow yourself
+	// Can't follow yourself
 	if senderID == receiverID {
-		return errors.New("cannot follow yourself")
+		return nil, errors.New("cannot follow yourself")
 	}
 
-	// Rule 3 — already pending?
+	// Already pending?
 	existing, _ := s.followerRepo.GetFollowRequest(senderID, receiverID)
 	if existing != nil && existing.Status == models.StatusPending {
-		return errors.New("follow request already sent")
+		return nil, errors.New("follow request already sent")
 	}
 
-	// Rule 4 — already following?
+	// Already following?
 	already, err := s.followerRepo.IsFollowing(senderID, receiverID)
 	if err != nil {
-		return errors.New("could not check follow status")
+		return nil, errors.New("could not check follow status")
 	}
 	if already {
-		return errors.New("already following this user")
+		return nil, errors.New("already following this user")
 	}
 
-	// Fetch receiver (privacy check)
 	receiver, err := s.userRepo.GetUserByID(receiverID)
 	if err != nil {
-		return errors.New("receiver not found")
+		return nil, errors.New("receiver not found")
 	}
 
-	// Public profile → direct follow
+	// PUBLIC ACCOUNT
 	if receiver.IsPublic {
 		if err := s.followerRepo.CreateFollower(senderID, receiverID); err != nil {
-			return errors.New("could not follow user")
+			return nil, errors.New("could not follow user")
 		}
-		return nil
+
+		notification := &models.Notification{
+			ID:          uuid.New().String(),
+			UserID:      receiverID,
+			ActorID:     senderID,
+			Type:        "new_follower",
+			ReferenceID: senderID,
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
+
+		if err := s.notificationRepo.CreateNotification(notification); err != nil {
+			return nil, errors.New("could not create notification")
+		}
+
+		return notification, nil
 	}
 
-	// Private profile → follow request
+	// PRIVATE ACCOUNT
 	req := &models.FollowRequest{
 		ID:         uuid.New().String(),
 		SenderID:   senderID,
@@ -79,10 +93,9 @@ func (s *FollowerService) SendFollowRequest(senderID, receiverID string) error {
 	}
 
 	if err := s.followerRepo.CreateFollowRequest(req); err != nil {
-		return errors.New("could not send follow request")
+		return nil, errors.New("could not send follow request")
 	}
 
-	// Notification (DB only, NO websocket here)
 	notification := &models.Notification{
 		ID:          uuid.New().String(),
 		UserID:      receiverID,
@@ -94,32 +107,32 @@ func (s *FollowerService) SendFollowRequest(senderID, receiverID string) error {
 	}
 
 	if err := s.notificationRepo.CreateNotification(notification); err != nil {
-		return errors.New("could not create notification")
+		return nil, errors.New("could not create notification")
 	}
 
-	return nil
+	return notification, nil
 }
 
-func (s *FollowerService) AcceptFollowRequest(requestID, receiverID string) error {
+func (s *FollowerService) AcceptFollowRequest(requestID, receiverID string) (*models.Notification, error) {
 	req, err := s.followerRepo.GetFollowRequestByID(requestID)
 	if err != nil {
-		return errors.New("follow request not found")
+		return nil, errors.New("follow request not found")
 	}
 
 	if req.Status != models.StatusPending {
-		return errors.New("follow request is no longer pending")
+		return nil, errors.New("follow request is no longer pending")
 	}
 
 	if req.ReceiverID != receiverID {
-		return errors.New("unauthorized")
+		return nil, errors.New("unauthorized")
 	}
 
 	if err := s.followerRepo.UpdateFollowRequest(requestID, models.StatusAccepted); err != nil {
-		return errors.New("could not update follow request status")
+		return nil, errors.New("could not update follow request status")
 	}
 
 	if err := s.followerRepo.CreateFollower(req.SenderID, req.ReceiverID); err != nil {
-		return errors.New("could not create follower relationship")
+		return nil, errors.New("could not create follower relationship")
 	}
 
 	notification := &models.Notification{
@@ -133,28 +146,28 @@ func (s *FollowerService) AcceptFollowRequest(requestID, receiverID string) erro
 	}
 
 	if err := s.notificationRepo.CreateNotification(notification); err != nil {
-		return errors.New("could not create notification")
+		return nil, errors.New("could not create notification")
 	}
 
-	return nil
+	return notification, nil
 }
 
-func (s *FollowerService) DeclineFollowRequest(requestID, receiverID string) error {
+func (s *FollowerService) DeclineFollowRequest(requestID, receiverID string) (*models.Notification, error) {
 	req, err := s.followerRepo.GetFollowRequestByID(requestID)
 	if err != nil {
-		return errors.New("follow request not found")
+		return nil, errors.New("follow request not found")
 	}
 
 	if req.Status != models.StatusPending {
-		return errors.New("follow request is no longer pending")
+		return nil, errors.New("follow request is no longer pending")
 	}
 
 	if req.ReceiverID != receiverID {
-		return errors.New("unauthorized")
+		return nil, errors.New("unauthorized")
 	}
 
 	if err := s.followerRepo.UpdateFollowRequest(requestID, models.StatusDeclined); err != nil {
-		return errors.New("could not update follow request status")
+		return nil, errors.New("could not update follow request status")
 	}
 
 	notification := &models.Notification{
@@ -168,10 +181,10 @@ func (s *FollowerService) DeclineFollowRequest(requestID, receiverID string) err
 	}
 
 	if err := s.notificationRepo.CreateNotification(notification); err != nil {
-		return errors.New("could not create notification")
+		return nil, errors.New("could not create notification")
 	}
 
-	return nil
+	return notification, nil
 }
 
 func (s *FollowerService) Unfollow(followerID, followingID string) error {
@@ -179,10 +192,16 @@ func (s *FollowerService) Unfollow(followerID, followingID string) error {
 	if err != nil {
 		return errors.New("could not check follow status")
 	}
+
 	if !already {
 		return errors.New("you are not following this user")
 	}
-	return s.followerRepo.DeleteFollower(followerID, followingID)
+
+	if err := s.followerRepo.DeleteFollower(followerID, followingID); err != nil {
+		return errors.New("could not unfollow user")
+	}
+
+	return nil
 }
 
 func (s *FollowerService) GetFollowers(userID string) ([]*models.FollowerProfile, error) {
