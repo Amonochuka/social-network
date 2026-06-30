@@ -1,4 +1,5 @@
 "use client";
+import { getFollowers, getFollowing } from "@/store/features/followerSlice";
 
 import { useEffect, useState } from "react";
 import {
@@ -48,31 +49,34 @@ export default function ProfilePage() {
   const [pendingPrivacyVal, setPendingPrivacyVal] = useState<boolean | null>(null);
 
   // stats
-  const [followers, setFollowers] = useState<FollowerProfile[]>([]);
-  const [following, setFollowing] = useState<FollowerProfile[]>([]);
+  const {
+    followers,
+    following,
+    loading: followersLoading,} = useAppSelector((state) => state.followers);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
-
+  
   useEffect(() => {
     if (!user) return;
+
     const fetchStats = async () => {
       try {
-        const [followersRes, followingRes, postsRes] = await Promise.all([
-          Api.get<FollowerProfile[]>("/followers"),
-          Api.get<FollowerProfile[]>("/following"),
-          Api.get<FeedPost[]>(`/users/${user.id}/posts`),
+        await Promise.all([
+          dispatch(getFollowers()).unwrap(),
+          dispatch(getFollowing()).unwrap(),
         ]);
-        setFollowers(followersRes.data ?? []);
-        setFollowing(followingRes.data ?? []);
+
+        const postsRes = await Api.get<FeedPost[]>(`/users/${user.id}/posts`);
         setPosts(postsRes.data ?? []);
       } catch (err) {
         console.error("Failed to load profile stats:", err);
       } finally {
         setStatsLoading(false);
-      }
+     }
     };
-    fetchStats();
-  }, [user]);
+
+  fetchStats();
+}, [user, dispatch]);
 
   if (!user) {
     return (

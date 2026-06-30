@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Api } from "@/services/axios";
-import { useAppSelector } from "@/store/hooks";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { authSelector } from "@/store/features/authSlice";
 import DefaultLayout from "@/components/layouts/defaultLayout";
 import { Calendar, Lock, UserPlus, UserMinus, Users } from "lucide-react";
 import Image from "next/image";
+import {getFollowing,sendFollowRequest,unfollowUser,} from "@/store/features/followerSlice";
 
 interface UserProfile {
   id: string;
@@ -51,6 +52,7 @@ function OtherUserProfile() {
   const params = useParams();
   const userId = params.userId as string;
   const { user: currentUser } = useAppSelector(authSelector);
+  const dispatch = useAppDispatch();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,27 +71,38 @@ function OtherUserProfile() {
         setProfile(res.data);
 
         // Check if we follow this user
-        const followingRes = await Api.get<FollowerProfile[]>("/following");
-        const followingList = followingRes.data ?? [];
-        const following = followingList.some((f) => f.user_id === userId);
-        setIsFollowing(following);
+        const updatedFollowing = await dispatch(getFollowing()).unwrap();
+        const followingUser = updatedFollowing.some(
+          (f: FollowerProfile) => f.user_id === userId
+        );
+
+        setIsFollowing(followingUser);
 
         // Can view if public profile or following
-        const canView = res.data.is_public || following || currentUser?.id === userId;
+
+        const canView =
+          res.data.is_public ||
+          followingUser ||
+          currentUser?.id === userId;
+
         setCanViewProfile(canView);
 
         // Load posts if allowed
+        // Load posts if allowed
         if (canView) {
           setPostsLoading(true);
-          try {
-            const postsRes = await Api.get<FeedPost[]>(`/users/${userId}/posts`);
-            setPosts(postsRes.data ?? []);
-          } catch {
-            setPosts([]);
-          } finally {
-            setPostsLoading(false);
-          }
+
+        try {
+          const postsRes = await Api.get<FeedPost[]>(`/users/${userId}/posts`);
+          setPosts(postsRes.data ?? []);
+        } catch {
+          setPosts([]);
+        } finally {
+          setPostsLoading(false);
         }
+      } else {
+          setPosts([]);
+      }
       } catch (err: any) {
         if (err.response?.status === 403) {
           setError("private");
@@ -102,17 +115,19 @@ function OtherUserProfile() {
     };
 
     if (userId) fetchProfile();
-  }, [userId, currentUser?.id]);
+  }, [userId, currentUser?.id, dispatch]);
 
   const handleFollow = async () => {
     setFollowLoading(true);
+
     try {
-      await Api.post("/follow/requests", { receiver_id: userId });
-      // If public user, they'll be auto-followed
+      await dispatch(sendFollowRequest(userId)).unwrap();
+
+      setIsFollowing(true);
+
       if (profile?.is_public) {
-        setIsFollowing(true);
         setCanViewProfile(true);
-        // Reload posts
+
         const postsRes = await Api.get<FeedPost[]>(`/users/${userId}/posts`);
         setPosts(postsRes.data ?? []);
       }
@@ -125,9 +140,12 @@ function OtherUserProfile() {
 
   const handleUnfollow = async () => {
     setFollowLoading(true);
+
     try {
-      await Api.delete(`/follow/${userId}`);
+      await dispatch(unfollowUser(userId)).unwrap();
+
       setIsFollowing(false);
+
       if (!profile?.is_public) {
         setCanViewProfile(false);
         setPosts([]);
