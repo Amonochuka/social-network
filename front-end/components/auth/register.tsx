@@ -28,6 +28,8 @@ export default function RegisterUI({ setRegister }: Props) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    console.log("REGISTER SUBMITTED");
+
     const form = e.currentTarget;
 
     const payload = {
@@ -39,6 +41,8 @@ export default function RegisterUI({ setRegister }: Props) {
       nickname: (form.elements.namedItem("nickName") as HTMLInputElement).value,
       about_me: about,
     };
+
+    console.log("Payload:", payload);
 
     const result = await dispatch(registerUser(payload));
 

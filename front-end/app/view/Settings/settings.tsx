@@ -85,16 +85,41 @@ export default function SettingsPage() {
     }
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePasswordChange = async (e: React.FormEvent) => {
+     e.preventDefault();
+
     if (!currentPassword || !newPassword) {
-      setPasswordStatus({ msg: "Please fill in both fields.", type: "error" });
+      setPasswordStatus({
+      msg: "Please fill in both fields.",
+      type: "error",
+      });
       return;
     }
-    setPasswordStatus({ msg: "Password changed successfully (mock demo).", type: "success" });
-    setCurrentPassword("");
-    setNewPassword("");
-    setTimeout(() => setPasswordStatus(null), 3000);
+
+    try {
+      setUpdating(true);
+
+      await Api.put("/profile/password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      setPasswordStatus({
+        msg: "Password updated successfully.",
+        type: "success",
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err: any) {
+      setPasswordStatus({
+        msg: err.response?.data || "Failed to update password.",
+        type: "error",
+      });
+    } finally {
+      setUpdating(false);
+      setTimeout(() => setPasswordStatus(null), 3000);
+    }
   };
 
   return (
