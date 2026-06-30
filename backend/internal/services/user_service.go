@@ -94,18 +94,30 @@ func (s *UserService) UpdateProfile(userID string, req *models.UpdateProfileRequ
 	}
 
 	// only update fields that were sent
+	if req.Email != "" && req.Email != user.Email {
+	existing, _ := s.repo.GetUserByEmail(req.Email)
+	if existing != nil {
+		return nil, errors.New("email already registered")
+	}
+	user.Email = req.Email
+	}
+
 	if req.FirstName != "" {
 		user.FirstName = req.FirstName
 	}
+
 	if req.LastName != "" {
 		user.LastName = req.LastName
 	}
+
 	if req.DateOfBirth != "" {
 		user.DateOfBirth = req.DateOfBirth
 	}
+
 	if req.NickName != "" {
 		user.NickName = req.NickName
 	}
+
 	if req.AboutMe != "" {
 		user.AboutMe = req.AboutMe
 	}
@@ -123,4 +135,29 @@ func (s *UserService) UpdatePrivacy(userID string, isPublic bool) error {
 
 func (s *UserService) UpdateAvatar(userID, avatarPath string) error {
 	return s.repo.UpdateAvatar(userID, avatarPath)
+}
+
+func (s *UserService) ChangePassword(userID string, req *models.ChangePasswordRequest) error {
+	user, err := s.repo.GetUserByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	// Verify current password
+	if !utils.CheckPassword(user.Password, req.CurrentPassword) {
+		return errors.New("current password is incorrect")
+	}
+
+	// Hash the new password
+	hashed, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return errors.New("failed to hash password")
+	}
+
+	// Save it
+	if err := s.repo.UpdatePassword(userID, hashed); err != nil {
+		return errors.New("failed to update password")
+	}
+
+	return nil
 }

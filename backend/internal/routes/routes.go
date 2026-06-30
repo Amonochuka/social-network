@@ -49,6 +49,8 @@ func Register(
 	mux.Handle("/api/profile", auth.Authenticate(http.HandlerFunc(authHandler.UpdateProfile)))
 	mux.Handle("/api/profile/privacy", auth.Authenticate(http.HandlerFunc(authHandler.UpdatePrivacy)))
 	mux.Handle("/api/profile/avatar", auth.Authenticate(http.HandlerFunc(authHandler.UploadAvatar)))
+	mux.Handle("/api/profile/password",
+	auth.Authenticate(http.HandlerFunc(authHandler.ChangePassword)))
 
 	// ==========================
 	// Search

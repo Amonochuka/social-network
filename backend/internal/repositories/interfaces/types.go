@@ -10,6 +10,7 @@ type UserRepository interface {
 	UpdateAvatar(userID, avatarPath string) error
 	UpdatePrivacy(userID string, isPublic bool) error
 	SearchUsers(query, currentUserID string) ([]*models.UserSearchResult, error)
+	UpdatePassword(userID, hashedPassword string) error
 }
 
 type SessionRepository interface {

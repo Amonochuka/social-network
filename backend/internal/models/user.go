@@ -50,6 +50,7 @@ type UserResponse struct {
 type UpdateProfileRequest struct {
 	FirstName   string `json:"first_name"`
 	LastName    string `json:"last_name"`
+	Email 		string `json:"email"`
 	DateOfBirth string `json:"date_of_birth"`
 	NickName    string `json:"nickname"`
 	AboutMe     string `json:"about_me"`
@@ -57,4 +58,9 @@ type UpdateProfileRequest struct {
 
 type PrivacyRequest struct {
 	IsPublic bool `json:"is_public"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
 }

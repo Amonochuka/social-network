@@ -164,3 +164,13 @@ func (r *userRepository) UpdatePrivacy(userID string, isPublic bool) error {
 	`, isPublic, userID)
 	return err
 }
+
+func (r *userRepository) UpdatePassword(userID, hashedPassword string) error {
+	_, err := r.db.Exec(`
+		UPDATE users
+		SET password = ?
+		WHERE id = ?
+	`, hashedPassword, userID)
+
+	return err
+}
