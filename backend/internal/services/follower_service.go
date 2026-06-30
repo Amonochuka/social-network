@@ -127,8 +127,8 @@ func (s *FollowerService) AcceptFollowRequest(requestID, receiverID string) (*mo
 		return nil, errors.New("unauthorized")
 	}
 
-	if err := s.followerRepo.UpdateFollowRequest(requestID, models.StatusAccepted); err != nil {
-		return nil, errors.New("could not update follow request status")
+	if err := s.followerRepo.DeleteFollowRequest(requestID); err != nil {
+		return nil, errors.New("could not remove follow request")
 	}
 
 	if err := s.followerRepo.CreateFollower(req.SenderID, req.ReceiverID); err != nil {
@@ -166,8 +166,8 @@ func (s *FollowerService) DeclineFollowRequest(requestID, receiverID string) (*m
 		return nil, errors.New("unauthorized")
 	}
 
-	if err := s.followerRepo.UpdateFollowRequest(requestID, models.StatusDeclined); err != nil {
-		return nil, errors.New("could not update follow request status")
+	if err := s.followerRepo.DeleteFollowRequest(requestID); err != nil {
+		return nil, errors.New("could not remove follow request")
 	}
 
 	notification := &models.Notification{

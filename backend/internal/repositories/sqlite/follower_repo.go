@@ -146,3 +146,12 @@ func (r *followerRepository) GetFollowing(userID string) ([]*models.FollowerProf
 	// Step 4 — return the list
 	return followers, nil
 }
+
+func (r *followerRepository) DeleteFollowRequest(requestID string) error {
+	_, err := r.db.Exec(`
+		DELETE FROM follow_requests
+		WHERE id = ?
+	`, requestID)
+
+	return err
+}
