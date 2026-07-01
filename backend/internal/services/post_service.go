@@ -69,20 +69,29 @@ func (s *PostService) GetPostsByUserID(userID, viewerID string) ([]*models.Post,
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
-	if !owner.IsPublic && userID != viewerID {
-		following, err := s.followerRepo.IsFollowing(viewerID, userID)
-		if err != nil {
-			return nil, errors.New("could not check follow status")
-		}
-		if !following {
-			return nil, errors.New("this profile is private")
-		}
+
+	// Own profile
+	if userID == viewerID {
+		return s.postRepo.GetPostsByUserID(userID, viewerID)
 	}
-	posts, err := s.postRepo.GetPostsByUserID(userID, viewerID)
+
+	// Public profile
+	if owner.IsPublic {
+		return s.postRepo.GetPostsByUserID(userID, viewerID)
+	}
+
+	// Private profile
+	following, err := s.followerRepo.IsFollowing(viewerID, userID)
 	if err != nil {
-		return nil, errors.New("could not get posts")
+		return nil, errors.New("could not check follow status")
 	}
-	return posts, nil
+
+	// Not following -> profile exists but no posts
+	if !following {
+		return []*models.Post{}, nil
+	}
+
+	return s.postRepo.GetPostsByUserID(userID, viewerID)
 }
 
 func (s *PostService) GetFeed(userID string) ([]*models.FeedPost, error) {

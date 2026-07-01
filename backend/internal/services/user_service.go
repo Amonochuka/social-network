@@ -68,22 +68,6 @@ func (s *UserService) GetProfile(viewerID, profileID string) (*models.User, erro
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
-	// own profile — always visible
-	if viewerID == profileID {
-		return user, nil
-	}
-	// public profile — visible to everyone
-	if user.IsPublic {
-		return user, nil
-	}
-	// private profile — only visible if viewer follows the owner
-	isFollowing, err := s.followerRepo.IsFollowing(viewerID, profileID)
-	if err != nil {
-		return nil, errors.New("could not verify follow status")
-	}
-	if !isFollowing {
-		return nil, errors.New("private")
-	}
 	return user, nil
 }
 

@@ -6,7 +6,7 @@ import { Api } from "@/services/axios";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { authSelector } from "@/store/features/authSlice";
 import DefaultLayout from "@/components/layouts/defaultLayout";
-import { Calendar, Lock, UserPlus, UserMinus, Users } from "lucide-react";
+import { Calendar, Lock, UserPlus, UserMinus } from "lucide-react";
 import Image from "next/image";
 import {getFollowing,sendFollowRequest,unfollowUser,} from "@/store/features/followerSlice";
 
@@ -103,13 +103,10 @@ function OtherUserProfile() {
       } else {
           setPosts([]);
       }
-      } catch (err: any) {
-        if (err.response?.status === 403) {
-          setError("private");
-        } else {
-          setError("User not found.");
-        }
-      } finally {
+      } catch (err) {
+          console.error(err);
+          setProfile(null);
+        } finally {
         setLoading(false);
       }
     };
@@ -164,22 +161,13 @@ function OtherUserProfile() {
       </div>
     );
   }
-
-  if (error === "private" || !profile) {
-    return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 text-gray-400">
-        <Lock size={48} className="text-gray-600" />
-        <h2 className="text-xl font-bold text-white">
-          {error === "private" ? "This profile is private" : "User not found"}
-        </h2>
-        <p className="text-sm text-gray-500">
-          {error === "private"
-            ? "Follow this user to see their profile and posts."
-            : "The user you're looking for doesn't exist."}
-        </p>
-      </div>
-    );
-  }
+    if (!profile) {
+      return (
+       <div className="flex h-screen w-full items-center justify-center text-gray-400">
+      User not found.
+    </div>
+      );
+    }
 
   const initials = `${profile.first_name?.[0] ?? ""}${profile.last_name?.[0] ?? ""}`.toUpperCase();
   const avatarUrl = profile.avatar
@@ -247,6 +235,16 @@ function OtherUserProfile() {
           )}
         </div>
 
+        {/* Private badge */}
+        {!profile.is_public && (
+        <div className="mt-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-400">
+            <Lock size={12} />
+            Private Account
+            </span>
+          </div>
+        )}
+
         {canViewProfile && (
           <>
             <p className="mt-2 text-sm leading-relaxed text-gray-400">
@@ -262,51 +260,73 @@ function OtherUserProfile() {
           </>
         )}
 
-        {!canViewProfile && (
-          <div className="mt-5 flex items-center gap-3 rounded-xl bg-white/5 px-4 py-3 border border-white/10">
-            <Lock size={16} className="text-gray-500" />
-            <p className="text-sm text-gray-400">
-              This account is private. Follow to see their posts and info.
-            </p>
-          </div>
-        )}
+        
       </div>
 
       {/* Posts */}
-      {canViewProfile && (
-        <div className="flex-1 p-6">
-          {postsLoading ? (
-            <div className="text-center text-sm text-gray-500 py-8">Loading posts...</div>
-          ) : posts.length === 0 ? (
-            <div className="rounded-2xl bg-[#222] p-8 text-center text-sm text-gray-500">
-              No posts yet.
+<div className="flex-1 p-6">
+  {canViewProfile ? (
+    postsLoading ? (
+      <div className="text-center text-sm text-gray-500 py-8">
+        Loading posts...
+      </div>
+    ) : posts.length === 0 ? (
+      <div className="rounded-2xl bg-[#222] p-8 text-center text-sm text-gray-500">
+        No posts yet.
+      </div>
+    ) : (
+      <div className="flex flex-col gap-4">
+        {posts.map((post) => (
+          <div
+            key={post.id}
+            className="rounded-xl bg-[#222] p-5 border border-white/5"
+          >
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {post.content}
+            </p>
+
+            {post.media_path && (
+              <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden">
+                <Image
+                  src={`http://localhost:8080/${post.media_path}`}
+                  fill
+                  sizes="(max-width:768px) 100vw, 50vw"
+                  style={{ objectFit: "cover" }}
+                  alt="post media"
+                />
+              </div>
+            )}
+
+            <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+              <span>
+                {new Date(post.created_at).toLocaleDateString()}
+              </span>
+
+              <span>{post.comment_count} comments</span>
             </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {posts.map((post) => (
-                <div key={post.id} className="rounded-xl bg-[#222] p-5 border border-white/5">
-                  <p className="text-sm text-gray-300 leading-relaxed">{post.content}</p>
-                  {post.media_path && (
-                    <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden">
-                      <Image
-                        src={`http://localhost:8080/${post.media_path}`}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        style={{ objectFit: "cover" }}
-                        alt="post media"
-                      />
-                    </div>
-                  )}
-                  <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                    <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                    <span>{post.comment_count} comments</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
+    )
+  ) : (
+    <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#202020] text-center">
+      <div className="mb-4 rounded-full bg-white/5 p-5">
+        <Lock size={32} className="text-gray-500" />
+      </div>
+
+      <h2 className="text-xl font-semibold text-white">
+        Private Account
+      </h2>
+
+      <p className="mt-2 max-w-sm text-sm text-gray-400">
+        Follow this account to see their posts, photos and profile
+        information.
+      </p>
+    </div>
+  )}
+</div>
+       
+      )
     </div>
   );
 }

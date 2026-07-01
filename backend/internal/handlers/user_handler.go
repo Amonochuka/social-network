@@ -230,10 +230,6 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.GetProfile(viewerID, profileID)
 	if err != nil {
-		if err.Error() == "private" {
-			http.Error(w, "this profile is private", http.StatusForbidden)
-			return
-		}
 		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
