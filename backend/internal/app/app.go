@@ -58,7 +58,7 @@ func New() (*App, error) {
 	authHandler := handlers.NewAuthHandler(userService, sessionService)
 	followerHandler := handlers.NewFollowerHandler(followerService, hub)
 	postHandler := handlers.NewPostHandler(postService)
-	notificationHandler := handlers.NewNotificationHandler(notificationService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService, hub)
 	oauthHandler := handlers.NewOAuthHandler(oauthService, sessionService)
 	chatHandler := handlers.NewChatHandler(chatService, hub)
 	groupHandler := handlers.NewGroupHandler(groupService, hub)

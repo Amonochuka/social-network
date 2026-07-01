@@ -84,6 +84,7 @@ func Register(
 	// ==========================
 	mux.Handle("/api/notifications", auth.Authenticate(http.HandlerFunc(notificationHandler.GetNotifications)))
 	mux.Handle("/api/notifications/{notification_id}/read", auth.Authenticate(http.HandlerFunc(notificationHandler.MarkAsRead)))
+	mux.Handle("/api/notifications/unread", auth.Authenticate(http.HandlerFunc(notificationHandler.GetUnreadCount)))
 
 	// ==========================
 	// Private Chat

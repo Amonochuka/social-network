@@ -3,7 +3,7 @@
 import UserPostUI from "../allPosts/allPosts";
 import { Follow } from "../sidebar/follow";
 import NavSideBar from "../sidebar/sidebar";
-import { SearchUI } from "./header";
+import SearchBar from "../header/SearchBar";
 import UserProfileImage from "../header/profile/userProfile";
 import { useSelector } from "react-redux";
 import { authSelector } from "@/store/features/authSlice";
@@ -46,7 +46,7 @@ export default function HomeDisplayLayout() {
             <div className="hidden lg:block w-[350px] shrink-0 pl-8 py-4">
                 <div className="sticky top-4 flex flex-col gap-6">
                     {/* Search Bar */}
-                    <SearchUI className="w-full" />
+                    <SearchBar className="w-full" />
 
                     {/* Follow widget */}
                     <div className="bg-[#16181c] rounded-2xl border border-white/5 overflow-hidden">

@@ -102,7 +102,7 @@ func (r *followerRepository) GetFollowers(userID string) ([]*models.FollowerProf
 	defer rows.Close() // always close rows when done
 
 	// Step 2 — prepare an empty list to collect results
-	var followers []*models.FollowerProfile
+	followers := []*models.FollowerProfile{}
 
 	// Step 3 — loop through each row
 	for rows.Next() {
@@ -131,20 +131,24 @@ func (r *followerRepository) GetFollowing(userID string) ([]*models.FollowerProf
 	defer rows.Close() // always close rows when done
 
 	// Step 2 — prepare an empty list to collect results
-	var followers []*models.FollowerProfile
+	following := make([]*models.FollowerProfile, 0)
 
-	// Step 3 — loop through each row
 	for rows.Next() {
 		var f models.FollowerProfile
-		err := rows.Scan(&f.UserID, &f.FirstName, &f.LastName, &f.Avatar, &f.Nickname)
+		err := rows.Scan(
+			&f.UserID,
+			&f.FirstName,
+			&f.LastName,
+			&f.Avatar,
+			&f.Nickname,
+		)
 		if err != nil {
 			return nil, err
 		}
-		followers = append(followers, &f)
+		following = append(following, &f)
 	}
 
-	// Step 4 — return the list
-	return followers, nil
+	return following, nil
 }
 
 func (r *followerRepository) DeleteFollowRequest(requestID string) error {
