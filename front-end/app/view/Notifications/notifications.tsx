@@ -69,19 +69,11 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, []);
 
-  const markAsRead = async (id: string) => {
-    try {
-      await Api.put(`/notifications/${id}/read`);
-    } catch (err) {
-      console.error("Failed to mark as read:", err);
-    }
-  };
 
   const handleAccept = async (n: NotificationDetail) => {
     try {
       await Api.post(`/follow/requests/${n.reference_id}/accept`);
       setHandled((prev) => ({ ...prev, [n.id]: "accepted" }));
-      markAsRead(n.id);
     } catch (err) {
       console.error("Failed to accept follow request:", err);
     }
@@ -91,7 +83,6 @@ export default function NotificationsPage() {
     try {
       await Api.post(`/follow/requests/${n.reference_id}/decline`);
       setHandled((prev) => ({ ...prev, [n.id]: "declined" }));
-      markAsRead(n.id);
     } catch (err) {
       console.error("Failed to decline follow request:", err);
     }
@@ -158,14 +149,6 @@ export default function NotificationsPage() {
                 ))}
 
               {/* Other notification types — just informational for now */}
-              {n.type !== "follow_request" && (
-                <button
-                  onClick={() => markAsRead(n.id)}
-                  className="rounded-lg bg-[#262626] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#333]"
-                >
-                  Mark read
-                </button>
-              )}
             </div>
           </div>
         ))}

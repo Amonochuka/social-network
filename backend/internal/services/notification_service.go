@@ -31,3 +31,7 @@ func (s *NotificationService) MarkAsRead(notificationID, userID string) error {
 	}
 	return nil
 }
+
+func (s *NotificationService) GetUnreadCount(userID string) (int, error) {
+	return s.notificationRepo.GetUnreadCount(userID)
+}

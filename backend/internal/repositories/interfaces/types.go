@@ -39,6 +39,8 @@ type NotificationRepository interface {
 	CreateNotification(n *models.Notification) error
 	GetNotificationsByUserID(userID string) ([]*models.NotificationDetail, error)
 	MarkNotificationAsRead(notificationID, userID string) error
+	GetUnreadCount(userID string) (int, error)
+	DeleteNotificationByReferenceID(refID, notificationType string) error
 }
 
 type PostRepository interface {

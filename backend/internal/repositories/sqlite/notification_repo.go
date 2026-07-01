@@ -64,3 +64,26 @@ func (r *notificationRepository) MarkNotificationAsRead(notificationID, userID s
         `, notificationID, userID)
 	return err
 }
+
+func (r *notificationRepository) GetUnreadCount(userID string) (int, error) {
+	var count int
+
+	err := r.db.QueryRow(`
+		SELECT COUNT(*)
+		FROM notifications
+		WHERE user_id = ?
+		AND is_read = 0
+	`, userID).Scan(&count)
+
+	return count, err
+}
+
+func (r *notificationRepository) DeleteNotificationByReferenceID(refID, notificationType string) error {
+	_, err := r.db.Exec(`
+		DELETE FROM notifications
+		WHERE ref_id = ?
+		AND type = ?
+	`, refID, notificationType)
+
+	return err
+}

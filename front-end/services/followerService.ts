@@ -2,19 +2,19 @@ import { Api } from "./axios";
 
 export const followerService = {
   sendFollowRequest: async (receiverId: string) => {
-    const res = await Api.post("/follow/request", {
+    const res = await Api.post("/follow/requests", {
       receiver_id: receiverId,
     });
     return res.data;
   },
 
   acceptFollowRequest: async (requestId: string) => {
-    const res = await Api.post(`/follow/request/${requestId}/accept`);
+    const res = await Api.post(`/follow/requests/${requestId}/accept`);
     return res.data;
   },
 
   declineFollowRequest: async (requestId: string) => {
-    const res = await Api.post(`/follow/request/${requestId}/decline`);
+    const res = await Api.post(`/follow/requests/${requestId}/decline`);
     return res.data;
   },
 
