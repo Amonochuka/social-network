@@ -33,6 +33,7 @@ type FollowerRepository interface {
 	GetFollowers(userID string) ([]*models.FollowerProfile, error)
 	GetFollowing(userID string) ([]*models.FollowerProfile, error)
 	DeleteFollowRequest(requestID string) error
+	GetFollowStatus(viewerID, targetID string) (string, error)
 }
 
 type NotificationRepository interface {

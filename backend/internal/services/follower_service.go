@@ -228,3 +228,7 @@ func (s *FollowerService) GetFollowers(userID string) ([]*models.FollowerProfile
 func (s *FollowerService) GetFollowing(userID string) ([]*models.FollowerProfile, error) {
 	return s.followerRepo.GetFollowing(userID)
 }
+
+func (s *FollowerService) GetFollowStatus(viewerID, targetID string) (string, error) {
+    return s.followerRepo.GetFollowStatus(viewerID, targetID)
+}

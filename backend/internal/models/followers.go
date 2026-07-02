@@ -103,3 +103,7 @@ type NotificationDetail struct {
 	IsRead      bool      `json:"is_read"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+type FollowStatus struct {
+    Status string `json:"status"`
+}

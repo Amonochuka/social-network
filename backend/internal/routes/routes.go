@@ -66,6 +66,7 @@ func Register(
 	mux.Handle("/api/follow/{user_id}", auth.Authenticate(http.HandlerFunc(followerHandler.Unfollow)))
 	mux.Handle("/api/followers", auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowers)))
 	mux.Handle("/api/following", auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowing)))
+	mux.Handle("/api/follow/{user_id}/status",auth.Authenticate(http.HandlerFunc(followerHandler.GetFollowStatus)))
 
 	// ==========================
 	// Posts

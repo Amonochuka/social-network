@@ -8,7 +8,7 @@ import { authSelector } from "@/store/features/authSlice";
 import DefaultLayout from "@/components/layouts/defaultLayout";
 import { Calendar, Lock, UserPlus, UserMinus } from "lucide-react";
 import Image from "next/image";
-import {getFollowing,sendFollowRequest,unfollowUser,} from "@/store/features/followerSlice";
+import {sendFollowRequest,unfollowUser,} from "@/store/features/followerSlice";
 
 interface UserProfile {
   id: string;
@@ -32,13 +32,6 @@ interface FeedPost {
   created_at: string;
 }
 
-interface FollowerProfile {
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  avatar: string;
-  nickname: string;
-}
 
 export default function OtherUserProfilePage() {
   return (
@@ -56,8 +49,7 @@ function OtherUserProfile() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [followStatus, setFollowStatus] = useState<"none" | "requested" | "following">("none");
   const [followLoading, setFollowLoading] = useState(false);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -71,18 +63,15 @@ function OtherUserProfile() {
         setProfile(res.data);
 
         // Check if we follow this user
-        const updatedFollowing = await dispatch(getFollowing()).unwrap();
-        const followingUser = updatedFollowing.some(
-          (f: FollowerProfile) => f.user_id === userId
-        );
-
-        setIsFollowing(followingUser);
-
+        const statusRes = await Api.get<{ status: "none" | "requested" | "following" }>(`/follow/${userId}/status`);
+        const status = statusRes.data.status;
+        setFollowStatus(status);
+       
         // Can view if public profile or following
 
         const canView =
           res.data.is_public ||
-          followingUser ||
+          status === "following" ||
           currentUser?.id === userId;
 
         setCanViewProfile(canView);
@@ -120,7 +109,11 @@ function OtherUserProfile() {
     try {
       await dispatch(sendFollowRequest(userId)).unwrap();
 
-      setIsFollowing(true);
+      if (profile?.is_public) {
+        setFollowStatus("following");
+      } else {
+        setFollowStatus("requested");
+      }
 
       if (profile?.is_public) {
         setCanViewProfile(true);
@@ -141,7 +134,7 @@ function OtherUserProfile() {
     try {
       await dispatch(unfollowUser(userId)).unwrap();
 
-      setIsFollowing(false);
+      setFollowStatus("none");
 
       if (!profile?.is_public) {
         setCanViewProfile(false);
@@ -203,25 +196,32 @@ function OtherUserProfile() {
           {/* Follow/Unfollow button */}
           {!isOwnProfile && (
             <button
-              onClick={isFollowing ? handleUnfollow : handleFollow}
-              disabled={followLoading}
-              className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
-                isFollowing
-                  ? "border border-white/15 bg-transparent text-gray-300 hover:bg-white/5 hover:text-red-400"
-                  : "bg-[--primary-theme] text-black hover:opacity-90"
-              } disabled:opacity-50`}
+              onClick={followStatus === "following"? handleUnfollow: handleFollow}
+              disabled={followLoading || followStatus === "requested"}
+             className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
+  followStatus === "following"
+    ? "border border-white/15 bg-transparent text-gray-300 hover:bg-white/5 hover:text-red-400"
+    : followStatus === "requested"
+    ? "border border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
+    : "bg-[--primary-theme] text-black hover:opacity-90"
+} disabled:opacity-50`}
             >
-              {isFollowing ? (
-                <>
-                  <UserMinus size={16} />
-                  {followLoading ? "..." : "Unfollow"}
-                </>
-              ) : (
-                <>
-                  <UserPlus size={16} />
-                  {followLoading ? "..." : "Follow"}
-                </>
-              )}
+              {followStatus === "following" ? (
+    <>
+        <UserMinus size={16} />
+        {followLoading ? "..." : "Unfollow"}
+    </>
+) : followStatus === "requested" ? (
+    <>
+        <UserPlus size={16} />
+        Requested
+    </>
+) : (
+    <>
+        <UserPlus size={16} />
+        {followLoading ? "..." : "Follow"}
+    </>
+)}
             </button>
           )}
         </div>

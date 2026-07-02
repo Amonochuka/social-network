@@ -159,3 +159,24 @@ func (r *followerRepository) DeleteFollowRequest(requestID string) error {
 
 	return err
 }
+
+func (r *followerRepository) GetFollowStatus(viewerID, targetID string) (string, error) {
+
+    // Already following?
+    following, err := r.IsFollowing(viewerID, targetID)
+    if err != nil {
+        return "", err
+    }
+
+    if following {
+        return "following", nil
+    }
+
+    // Pending request?
+    req, err := r.GetFollowRequest(viewerID, targetID)
+    if err == nil && req != nil {
+        return "requested", nil
+    }
+
+    return "none", nil
+}
