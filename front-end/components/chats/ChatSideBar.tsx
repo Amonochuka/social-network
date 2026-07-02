@@ -33,6 +33,9 @@ export default function ChatSideBar() {
   const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<ConversationPreview[]>([]);
+
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -49,22 +52,61 @@ export default function ChatSideBar() {
     fetchConversations();
   }, []);
 
+  useEffect(() => {
+    if (!search.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await Api.get(
+          `/users/search?q=${encodeURIComponent(search)}`
+        );
+
+        setSearchResults(res.data ?? []);
+      } catch (err) {
+        console.error("Search failed:", err);
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const displayList = search.trim() ? searchResults : conversations;
+
   return (
     <aside className="w-[29%] min-w-90.5 py-2 px-6 h-screen flex flex-col gap-1 bg-[#222222]">
       <Logo />
+
       <div className="flex flex-col gap-2">
-        <p className="font-bold py-1 text-2xl text-[#14afa7]">Chat Messages</p>
-        <SearchUI placeholder="search friends...." />
+        <p className="font-bold py-1 text-2xl text-[#14afa7]">
+          Chat Messages
+        </p>
+
+        <SearchUI
+          placeholder="Search friends..."
+          value={search}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setSearch(e.target.value)
+          }
+        />
       </div>
+
       <div className="mt-2.5 flex flex-col gap-3 flex-1 overflow-y-auto">
         {loading ? (
-          <p className="text-sm text-gray-500 px-2 py-3">Loading conversations...</p>
-        ) : conversations.length === 0 ? (
           <p className="text-sm text-gray-500 px-2 py-3">
-            No conversations yet. Follow someone and start chatting.
+            Loading conversations...
+          </p>
+        ) : displayList.length === 0 ? (
+          <p className="text-sm text-gray-500 px-2 py-3">
+            {search.trim()
+              ? "No users found."
+              : "No conversations yet. Follow someone and start chatting."}
           </p>
         ) : (
-          conversations.map((convo) => (
+          displayList.map((convo) => (
             <Link
               href={`/view/Messages/${convo.user_id}`}
               key={convo.user_id}
@@ -81,20 +123,25 @@ export default function ChatSideBar() {
                   }
                   name={`${convo.first_name} ${convo.last_name}`}
                 />
+
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate min-w-0">
+                  <p className="font-bold truncate">
                     {convo.first_name} {convo.last_name}
                   </p>
-                  <p className="text-sm text-gray-400 truncate">
-                    {convo.last_message}
-                  </p>
+
+                  {convo.last_message && (
+                    <p className="text-sm text-gray-400 truncate">
+                      {convo.last_message}
+                    </p>
+                  )}
                 </div>
               </div>
-              <div>
+
+              {convo.last_message_at && (
                 <p className="text-sm shrink-0 text-gray-300 font-bold">
                   {timeAgo(convo.last_message_at)}
                 </p>
-              </div>
+              )}
             </Link>
           ))
         )}
