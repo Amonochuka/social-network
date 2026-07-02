@@ -82,21 +82,22 @@ func (s *GroupService) GetAllGroups() ([]*models.Group, error) {
 }
 
 // ── Invitations ──────────────────────────────────────────────────────────────
-
-func (s *GroupService) InviteUser(groupID, inviterID, inviteeID string) error {
+func (s *GroupService) InviteUser(groupID, inviterID, inviteeID string) (*models.Notification, error) {
 	// inviter must be a member
 	isMember, err := s.groupRepo.IsMember(groupID, inviterID)
 	if err != nil || !isMember {
-		return errors.New("you must be a group member to invite")
+		return nil, errors.New("you must be a group member to invite")
 	}
+
 	// invitee must not already be a member
 	alreadyMember, _ := s.groupRepo.IsMember(groupID, inviteeID)
 	if alreadyMember {
-		return errors.New("user is already a member")
+		return nil, errors.New("user is already a member")
 	}
+
 	// no pending invite already
 	if existing, _ := s.groupRepo.GetPendingInvitation(groupID, inviteeID); existing != nil {
-		return errors.New("invitation already sent")
+		return nil, errors.New("invitation already sent")
 	}
 
 	inv := &models.GroupInvitation{
@@ -107,12 +108,13 @@ func (s *GroupService) InviteUser(groupID, inviterID, inviteeID string) error {
 		Status:    "pending",
 		CreatedAt: time.Now(),
 	}
+
 	if err := s.groupRepo.CreateInvitation(inv); err != nil {
-		return errors.New("could not create invitation")
+		return nil, errors.New("could not create invitation")
 	}
 
 	// notify invitee
-	s.notificationRepo.CreateNotification(&models.Notification{
+	notification := &models.Notification{
 		ID:          uuid.New().String(),
 		UserID:      inviteeID,
 		ActorID:     inviterID,
@@ -120,8 +122,13 @@ func (s *GroupService) InviteUser(groupID, inviterID, inviteeID string) error {
 		ReferenceID: inv.ID,
 		IsRead:      false,
 		CreatedAt:   time.Now(),
-	})
-	return nil
+	}
+
+	if err := s.notificationRepo.CreateNotification(notification); err != nil {
+		return nil, errors.New("could not create notification")
+	}
+
+	return notification, nil
 }
 
 func (s *GroupService) AcceptInvitation(invID, userID string) error {
@@ -129,16 +136,29 @@ func (s *GroupService) AcceptInvitation(invID, userID string) error {
 	if err != nil {
 		return errors.New("invitation not found")
 	}
+
 	if inv.InviteeID != userID {
 		return errors.New("unauthorized")
 	}
+
 	if inv.Status != "pending" {
 		return errors.New("invitation is no longer pending")
 	}
+
 	if err := s.groupRepo.UpdateInvitationStatus(invID, "accepted"); err != nil {
 		return errors.New("could not update invitation")
 	}
-	return s.groupRepo.AddMember(inv.GroupID, userID)
+
+	if err := s.groupRepo.AddMember(inv.GroupID, userID); err != nil {
+		return err
+	}
+
+	// Remove the invitation notification
+	if err := s.notificationRepo.DeleteNotificationByReferenceID(inv.ID, "group_invitation"); err != nil {
+		return errors.New("could not remove invitation notification")
+	}
+
+	return nil
 }
 
 func (s *GroupService) DeclineInvitation(invID, userID string) error {
@@ -146,13 +166,24 @@ func (s *GroupService) DeclineInvitation(invID, userID string) error {
 	if err != nil {
 		return errors.New("invitation not found")
 	}
+
 	if inv.InviteeID != userID {
 		return errors.New("unauthorized")
 	}
+
 	if inv.Status != "pending" {
 		return errors.New("invitation is no longer pending")
 	}
-	return s.groupRepo.UpdateInvitationStatus(invID, "declined")
+
+	if err := s.groupRepo.UpdateInvitationStatus(invID, "declined"); err != nil {
+		return errors.New("could not update invitation")
+	}
+
+	if err := s.notificationRepo.DeleteNotificationByReferenceID(inv.ID, "group_invitation"); err != nil {
+		return errors.New("could not remove invitation notification")
+	}
+
+	return nil
 }
 
 // ── Join Requests ─────────────────────────────────────────────────────────────

@@ -100,20 +100,32 @@ func (h *GroupHandler) InviteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	userID := h.getUserID(r)
 	groupID := r.PathValue("group_id")
+
 	var req struct {
 		InviteeID string `json:"invitee_id"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := h.groupService.InviteUser(groupID, userID, req.InviteeID); err != nil {
+
+	notification, err := h.groupService.InviteUser(groupID, userID, req.InviteeID)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.respondJSON(w, http.StatusOK, map[string]string{"message": "invitation sent"})
+
+	if notification != nil {
+		h.hub.SendToUser(notification.UserID, notification)
+	}
+
+	h.respondJSON(w, http.StatusOK, map[string]string{
+		"message": "invitation sent",
+	})
 }
 
 // ── POST /api/groups/{group_id}/join ─────────────────────────────────────────
@@ -139,13 +151,18 @@ func (h *GroupHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	userID := h.getUserID(r)
 	invID := r.PathValue("inv_id")
+
 	if err := h.groupService.AcceptInvitation(invID, userID); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.respondJSON(w, http.StatusOK, map[string]string{"message": "invitation accepted"})
+
+	h.respondJSON(w, http.StatusOK, map[string]string{
+		"message": "invitation accepted",
+	})
 }
 
 // ── POST /api/groups/invitations/{inv_id}/decline ─────────────────────────────
@@ -155,13 +172,18 @@ func (h *GroupHandler) DeclineInvitation(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	userID := h.getUserID(r)
 	invID := r.PathValue("inv_id")
+
 	if err := h.groupService.DeclineInvitation(invID, userID); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.respondJSON(w, http.StatusOK, map[string]string{"message": "invitation declined"})
+
+	h.respondJSON(w, http.StatusOK, map[string]string{
+		"message": "invitation declined",
+	})
 }
 
 // ── POST /api/groups/requests/{req_id}/accept ─────────────────────────────────
