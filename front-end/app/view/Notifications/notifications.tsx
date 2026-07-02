@@ -45,9 +45,12 @@ function actionText(type: string): string {
       return "created a new event.";
     case "new_follower":
       return "started following you.";
+    case "group_join_request_accepted":
+      return "accepted your request to join the group.";
+    case "group_join_request_declined":
+      return "declined your request to join the group.";
     default:
       return "sent you a notification.";
-
   }
 }
 
@@ -68,7 +71,12 @@ export default function NotificationsPage() {
     try {
       const res = await Api.get<NotificationDetail[]>("/notifications");
 
+console.log("Notifications:");
+console.table(res.data);
 console.log(JSON.stringify(res.data, null, 2));
+
+setItems(res.data ?? []);
+      
 
       setItems(res.data ?? []);
     } catch (err) {
@@ -134,6 +142,24 @@ const markAsRead = async (id: string) => {
     }
   };
 
+  const handleJoinRequestAccept = async (n: NotificationDetail) => {
+  try {
+    await Api.post(`/groups/requests/${n.reference_id}/accept`);
+    setHandled(prev => ({ ...prev, [n.id]: "accepted" }));
+  } catch (err) {
+    console.error("Failed to accept join request:", err);
+  }
+};
+
+const handleJoinRequestDecline = async (n: NotificationDetail) => {
+  try {
+    await Api.post(`/groups/requests/${n.reference_id}/decline`);
+    setHandled(prev => ({ ...prev, [n.id]: "declined" }));
+  } catch (err) {
+    console.error("Failed to decline join request:", err);
+  }
+};
+
   if (loading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
@@ -197,7 +223,11 @@ const markAsRead = async (id: string) => {
                 ))}
 
               {/* Other notification types — just informational for now */}
-              {!["follow_request", "group_invitation"].includes(n.type) && !n.is_read && (
+              {![
+              "follow_request",
+              "group_invitation",
+              "group_join_request",
+              ].includes(n.type) && !n.is_read && (
               <button
               onClick={() => markAsRead(n.id)}
               className="rounded-lg bg-[#262626] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#333]"
@@ -206,13 +236,15 @@ const markAsRead = async (id: string) => {
               </button> 
             )}
             {n.type === "group_invitation" &&
-            (
+(
     handled[n.id] ? (
-        <span className={`text-sm font-semibold ${
-            handled[n.id] === "accepted"
-                ? "text-[#14afa7]"
-                : "text-red-500"
-        }`}>
+        <span
+            className={`text-sm font-semibold ${
+                handled[n.id] === "accepted"
+                    ? "text-[#14afa7]"
+                    : "text-red-500"
+            }`}
+        >
             {handled[n.id] === "accepted"
                 ? "Accepted"
                 : "Declined"}
@@ -228,6 +260,39 @@ const markAsRead = async (id: string) => {
 
             <button
                 onClick={() => handleGroupInviteDecline(n)}
+                className="rounded-lg border border-[#3a3a3a] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#242424]"
+            >
+                Decline
+            </button>
+        </div>
+    )
+)}
+
+{n.type === "group_join_request" &&
+(
+    handled[n.id] ? (
+        <span
+            className={`text-sm font-semibold ${
+                handled[n.id] === "accepted"
+                    ? "text-[#14afa7]"
+                    : "text-red-500"
+            }`}
+        >
+            {handled[n.id] === "accepted"
+                ? "Accepted"
+                : "Declined"}
+        </span>
+    ) : (
+        <div className="flex gap-2">
+            <button
+                onClick={() => handleJoinRequestAccept(n)}
+                className="rounded-lg bg-[#14afa7] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+            >
+                Accept
+            </button>
+
+            <button
+                onClick={() => handleJoinRequestDecline(n)}
                 className="rounded-lg border border-[#3a3a3a] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#242424]"
             >
                 Decline

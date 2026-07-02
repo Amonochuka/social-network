@@ -63,6 +63,15 @@ func (s *GroupService) GetGroup(groupID, viewerID string) (*models.GroupDetail, 
 	invStatus, _ := s.groupRepo.GetInvitationStatus(groupID, viewerID)
 	reqStatus, _ := s.groupRepo.GetJoinRequestStatus(groupID, viewerID)
 
+	// Only expose active requests/invitations.
+	if reqStatus != "pending" {
+		reqStatus = ""
+	}
+
+	if invStatus != "pending" {
+		invStatus = ""
+	}
+
 	return &models.GroupDetail{
 		Group:         *group,
 		Members:       members,
@@ -225,37 +234,88 @@ func (s *GroupService) RequestToJoin(groupID, userID string) error {
 	return nil
 }
 
-func (s *GroupService) AcceptJoinRequest(reqID, creatorID string) error {
+func (s *GroupService) AcceptJoinRequest(reqID, creatorID string) (*models.Notification, error) {
 	req, err := s.groupRepo.GetJoinRequestByID(reqID)
 	if err != nil {
-		return errors.New("request not found")
+		return nil, errors.New("request not found")
 	}
+
 	group, err := s.groupRepo.GetGroupByID(req.GroupID)
 	if err != nil || group.CreatorID != creatorID {
-		return errors.New("only the group creator can accept requests")
+		return nil, errors.New("only the group creator can accept requests")
 	}
+
 	if req.Status != "pending" {
-		return errors.New("request is no longer pending")
+		return nil, errors.New("request is no longer pending")
 	}
+
 	if err := s.groupRepo.UpdateJoinRequestStatus(reqID, "accepted"); err != nil {
-		return errors.New("could not update request")
+		return nil, errors.New("could not update request")
 	}
-	return s.groupRepo.AddMember(req.GroupID, req.UserID)
+
+	if err := s.groupRepo.AddMember(req.GroupID, req.UserID); err != nil {
+		return nil, errors.New("could not add member")
+	}
+
+	notification := &models.Notification{
+		ID:          uuid.New().String(),
+		UserID:      req.UserID,
+		ActorID:     creatorID,
+		Type:        "group_join_request_accepted",
+		ReferenceID: req.ID,
+		IsRead:      false,
+		CreatedAt:   time.Now(),
+	}
+
+	if err := s.notificationRepo.CreateNotification(notification); err != nil {
+		return nil, errors.New("could not create notification")
+	}
+
+	if err := s.notificationRepo.DeleteNotificationByReferenceID(req.ID, "group_join_request"); err != nil {
+		return nil, errors.New("could not remove old notification")
+	}
+
+	return notification, nil
 }
 
-func (s *GroupService) DeclineJoinRequest(reqID, creatorID string) error {
+func (s *GroupService) DeclineJoinRequest(reqID, creatorID string) (*models.Notification, error) {
 	req, err := s.groupRepo.GetJoinRequestByID(reqID)
 	if err != nil {
-		return errors.New("request not found")
+		return nil, errors.New("request not found")
 	}
+
 	group, err := s.groupRepo.GetGroupByID(req.GroupID)
 	if err != nil || group.CreatorID != creatorID {
-		return errors.New("only the group creator can decline requests")
+		return nil, errors.New("only the group creator can decline requests")
 	}
+
 	if req.Status != "pending" {
-		return errors.New("request is no longer pending")
+		return nil, errors.New("request is no longer pending")
 	}
-	return s.groupRepo.UpdateJoinRequestStatus(reqID, "declined")
+
+	if err := s.groupRepo.UpdateJoinRequestStatus(reqID, "declined"); err != nil {
+		return nil, errors.New("could not update request")
+	}
+
+	notification := &models.Notification{
+		ID:          uuid.New().String(),
+		UserID:      req.UserID,
+		ActorID:     creatorID,
+		Type:        "group_join_request_declined",
+		ReferenceID: req.ID,
+		IsRead:      false,
+		CreatedAt:   time.Now(),
+	}
+
+	if err := s.notificationRepo.CreateNotification(notification); err != nil {
+		return nil, errors.New("could not create notification")
+	}
+
+	if err := s.notificationRepo.DeleteNotificationByReferenceID(req.ID, "group_join_request"); err != nil {
+		return nil, errors.New("could not remove old notification")
+	}
+
+	return notification, nil
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────

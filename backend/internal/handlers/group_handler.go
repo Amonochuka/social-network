@@ -195,11 +195,19 @@ func (h *GroupHandler) AcceptJoinRequest(w http.ResponseWriter, r *http.Request)
 	}
 	userID := h.getUserID(r)
 	reqID := r.PathValue("req_id")
-	if err := h.groupService.AcceptJoinRequest(reqID, userID); err != nil {
+	notification, err := h.groupService.AcceptJoinRequest(reqID, userID)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.respondJSON(w, http.StatusOK, map[string]string{"message": "join request accepted"})
+
+	if notification != nil {
+		h.hub.SendToUser(notification.UserID, notification)
+	}
+
+	h.respondJSON(w, http.StatusOK, map[string]string{
+		"message": "join request accepted",
+	})
 }
 
 // ── POST /api/groups/requests/{req_id}/decline ────────────────────────────────
@@ -211,11 +219,19 @@ func (h *GroupHandler) DeclineJoinRequest(w http.ResponseWriter, r *http.Request
 	}
 	userID := h.getUserID(r)
 	reqID := r.PathValue("req_id")
-	if err := h.groupService.DeclineJoinRequest(reqID, userID); err != nil {
+	notification, err := h.groupService.DeclineJoinRequest(reqID, userID)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.respondJSON(w, http.StatusOK, map[string]string{"message": "join request declined"})
+
+	if notification != nil {
+		h.hub.SendToUser(notification.UserID, notification)
+	}
+
+	h.respondJSON(w, http.StatusOK, map[string]string{
+		"message": "join request declined",
+	})
 }
 
 // ── POST /api/groups/{group_id}/events ───────────────────────────────────────
