@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import UserProfileImage from "@/components/header/profile/userProfile";
 import { SearchUI } from "@/components/main/header";
 import { Logo } from "@/components/sidebar/sidebar";
+import { searchService, SearchUser } from "@/services/searchService";
 import { Api } from "@/services/axios";
 import Link from "next/link";
 
@@ -36,6 +37,16 @@ export default function ChatSideBar() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<ConversationPreview[]>([]);
 
+  const mapSearchUsers = (users: SearchUser[]): ConversationPreview[] =>
+    users.map((user) => ({
+      user_id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      avatar: user.avatar,
+      last_message: "",
+      last_message_at: "",
+    }));
+
   useEffect(() => {
     const fetchConversations = async () => {
       try {
@@ -60,11 +71,8 @@ export default function ChatSideBar() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await Api.get(
-          `/users/search?q=${encodeURIComponent(search)}`
-        );
-
-        setSearchResults(res.data ?? []);
+        const data = await searchService.searchUsers(search);
+        setSearchResults(mapSearchUsers(data.users));
       } catch (err) {
         console.error("Search failed:", err);
         setSearchResults([]);

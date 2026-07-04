@@ -3,8 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ChatContentLayout from "@/components/chats/chatContentLayout";
-import useSocket, { SocketType } from "@/hooks/useSocket";
-import loadEnvFile from "@/config/config";
+import { useSocketContext } from "@/contexts/SocketContext";
 import { Api } from "@/services/axios";
 
 interface ChatProfile {
@@ -18,8 +17,11 @@ export default function ChatUser() {
   const { userId } = useParams();
   const [profile, setProfile] = useState<ChatProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const userIdString = Array.isArray(userId) ? userId[0] : userId;
 
-  const config = loadEnvFile({urlType: "socket-url", urlUsage: "chat"})
+  const { connected, onlineUsers, getMessages, loadConversation, sendMessage } = useSocketContext();
+
+  const isUserOnline = userIdString ? onlineUsers.includes(userIdString) : false;
 
   useEffect(() => {
     if (!userId) return;
@@ -36,9 +38,14 @@ export default function ChatUser() {
       .finally(() => setLoading(false));
   }, [userId]);
 
-  if (!config.sockectUrl || !userId) return null;
-  
-  const {connected, messages, sendMessage}: SocketType = useSocket(config.sockectUrl, String(userId));
+  useEffect(() => {
+    if (!userIdString) return;
+    loadConversation(userIdString);
+  }, [userIdString, loadConversation]);
+
+  if (!userIdString) return null;
+
+  const messages = getMessages(userIdString);
 
   if (loading) {
     return (
@@ -61,6 +68,7 @@ export default function ChatUser() {
       data={profile}
       messages={messages}
       connected={connected}
+      isUserOnline={isUserOnline}
       sendMessage={sendMessage}
     />
   );

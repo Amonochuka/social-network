@@ -4,8 +4,7 @@ import UserProfileImage from "@/components/header/profile/userProfile";
 import { Phone, Video, MoreVertical } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
 import ChatContentLayout from "@/components/chats/chatContentLayout";
-import useSocket, { SocketType } from "@/hooks/useSocket";
-import loadEnvFile from "@/config/config";
+import { useSocketContext } from "@/contexts/SocketContext";
 import { NewChat } from "@/components/chats/messages";
 import { Api } from "@/services/axios";
 
@@ -18,9 +17,11 @@ interface ChatProfile {
 
 interface HeaderProps {
   data: ChatProfile;
+  connected?: boolean;
+  isUserOnline?: boolean;
 }
 
-export default function SingleUserChatProfile({ data }: HeaderProps) {
+export default function SingleUserChatProfile({ data, connected = true, isUserOnline = false }: HeaderProps) {
   const avatarUrl = data.avatar
     ? data.avatar.startsWith("http")
       ? data.avatar
@@ -35,6 +36,15 @@ export default function SingleUserChatProfile({ data }: HeaderProps) {
           <p className="font-bold text-lg">
             {data.first_name} {data.last_name}
           </p>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              isUserOnline ? "bg-green-500" : "bg-gray-500"
+            }`} />
+            <span className="text-xs text-gray-400">
+              {isUserOnline ? "Online" : "Offline"}
+            </span>
+            {!connected && <span className="text-xs text-red-500 ml-2">Connection offline</span>}
+          </div>
         </div>
       </div>
       <div className="flex gap-6">
@@ -49,11 +59,14 @@ export default function SingleUserChatProfile({ data }: HeaderProps) {
 export function ChatUser() {
   const { userId } = useParams();
   const pathname = usePathname();
-  const config = loadEnvFile({ urlType: "socket-url", urlUsage: "chat" });
+  const userIdString = Array.isArray(userId) ? userId[0] : userId;
+  const { connected, onlineUsers, getMessages, loadConversation, sendMessage } = useSocketContext();
 
   const [profile, setProfile] = useState<ChatProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
+
+  const isUserOnline = userIdString ? onlineUsers.includes(userIdString) : false;
 
   useEffect(() => {
     if (!userId) return;
@@ -75,10 +88,12 @@ export function ChatUser() {
     fetchProfile();
   }, [userId]);
 
-  const { connected, messages, sendMessage }: SocketType = useSocket(
-    config.sockectUrl ?? "",
-    String(userId ?? "")
-  );
+  useEffect(() => {
+    if (!userIdString) return;
+    loadConversation(userIdString);
+  }, [userIdString, loadConversation]);
+
+  const messages = userIdString ? getMessages(userIdString) : [];
 
   if (pathname === "/view/Messages") {
     return <NewChat />;
@@ -109,6 +124,7 @@ export function ChatUser() {
       data={profile}
       messages={messages}
       connected={connected}
+      isUserOnline={isUserOnline}
       sendMessage={sendMessage}
     />
   );
