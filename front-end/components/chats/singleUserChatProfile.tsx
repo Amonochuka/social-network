@@ -66,7 +66,7 @@ export function ChatUser() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
 
-  const isUserOnline = userIdString ? onlineUsers.includes(userIdString) : false;
+  const isUserOnline = userIdString ? onlineUsers.has(userIdString) : false;
 
   useEffect(() => {
     if (!userId) return;

@@ -21,7 +21,7 @@ export default function ChatUser() {
 
   const { connected, onlineUsers, getMessages, loadConversation, sendMessage } = useSocketContext();
 
-  const isUserOnline = userIdString ? onlineUsers.includes(userIdString) : false;
+  const isUserOnline = userIdString ? onlineUsers.has(userIdString) : false;
 
   useEffect(() => {
     if (!userId) return;
