@@ -40,6 +40,13 @@ export function WebSocketProvider({
   const auth = useAppSelector(authSelector);
   const currentUserId = auth.user?.id;
 
+  // Keep latest user id without recreating the websocket.
+  const currentUserIdRef = useRef(currentUserId);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
+
   const config = loadEnvFile({
     urlType: "socket-url",
     urlUsage: "chat",
@@ -52,6 +59,7 @@ export function WebSocketProvider({
       setMessagesByUser((prev) => {
         const existing = prev[conversationId] ?? [];
 
+        // Prevent duplicate messages.
         if (existing.some((m) => m.messageId === message.messageId)) {
           return prev;
         }
@@ -128,10 +136,11 @@ export function WebSocketProvider({
     [addMessageToConversation]
   );
 
+  // Open ONE websocket for the lifetime of this provider.
   useEffect(() => {
     if (!socketUrl) return;
-    if (socketRef.current) return;
     if (typeof window === "undefined") return;
+    if (socketRef.current) return;
 
     console.log("Opening websocket:", socketUrl);
 
@@ -145,11 +154,7 @@ export function WebSocketProvider({
     };
 
     socket.onclose = (event) => {
-      console.warn(
-        "❌ WebSocket closed",
-        event.code,
-        event.reason
-      );
+      console.warn("❌ WebSocket closed", event.code, event.reason);
 
       setConnected(false);
       socketRef.current = null;
@@ -173,7 +178,7 @@ export function WebSocketProvider({
             const receiverId = String(m.receiver_id);
 
             const conversationId =
-              senderId === currentUserId
+              senderId === currentUserIdRef.current
                 ? receiverId
                 : senderId;
 
@@ -189,6 +194,12 @@ export function WebSocketProvider({
 
             break;
           }
+
+          case "presence_update": {
+            const users = payload.online_users ?? [];
+            setOnlineUsers(new Set(users.map(String)));
+            break;
+          }   
 
           case "presence": {
             const userId = String(payload.user_id);
@@ -217,10 +228,11 @@ export function WebSocketProvider({
     };
 
     return () => {
+      console.log("Cleaning up websocket");
       socket.close();
       socketRef.current = null;
     };
-  }, [socketUrl, currentUserId, addMessageToConversation]);
+  }, [socketUrl]); // <-- only depends on socketUrl
 
   return (
     <SocketContext.Provider

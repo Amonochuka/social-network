@@ -28,18 +28,67 @@ func NewHub() *Hub {
 	}
 }
 
+// broadcastPresence notifies every connected client that a user's
+// online status has changed.
+func (h *Hub) broadcastPresence(userID string, online bool) {
+	payload := map[string]interface{}{
+		"type":      "presence",
+		"user_id":   userID,
+		"is_online": online,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	for _, clients := range h.clients {
+		for _, client := range clients {
+			select {
+			case client.Send <- data:
+			default:
+			}
+		}
+	}
+}
+
 // Register adds a client connection for a user.
 func (h *Hub) Register(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+
+	// Remember whether this user was previously offline.
+	wasOffline := len(h.clients[client.UserID]) == 0
+
 	h.clients[client.UserID] = append(h.clients[client.UserID], client)
+
+	// Send the newly connected client everyone who is already online.
+	onlineUsers := make([]string, 0, len(h.clients))
+	for userID := range h.clients {
+		onlineUsers = append(onlineUsers, userID)
+	}
+
+	payload := map[string]interface{}{
+		"type":         "presence_update",
+		"online_users": onlineUsers,
+	}
+
+	data, _ := json.Marshal(payload)
+
+	h.mu.Unlock()
+
+	client.Send <- data
+
+	// Only broadcast when this is the user's first open tab.
+	if wasOffline {
+		h.broadcastPresence(client.UserID, true)
+	}
+
 	log.Printf("ws: user %s connected (total connections: %d)", client.UserID, len(h.clients[client.UserID]))
 }
 
 // Unregister removes a client connection when it disconnects.
 func (h *Hub) Unregister(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
 	conns := h.clients[client.UserID]
 	for i, c := range conns {
@@ -48,10 +97,22 @@ func (h *Hub) Unregister(client *Client) {
 			break
 		}
 	}
-	if len(h.clients[client.UserID]) == 0 {
+
+	// Only announce offline when every tab has disconnected.
+	nowOffline := len(h.clients[client.UserID]) == 0
+
+	if nowOffline {
 		delete(h.clients, client.UserID)
 	}
+
+	h.mu.Unlock()
+
 	close(client.Send)
+
+	if nowOffline {
+		h.broadcastPresence(client.UserID, false)
+	}
+
 	log.Printf("ws: user %s disconnected", client.UserID)
 }
 
@@ -91,8 +152,10 @@ func (h *Hub) SendToGroup(memberIDs []string, payload interface{}) {
 		log.Println("ws: failed to marshal group payload:", err)
 		return
 	}
+
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+
 	for _, userID := range memberIDs {
 		for _, client := range h.clients[userID] {
 			select {
@@ -103,4 +166,3 @@ func (h *Hub) SendToGroup(memberIDs []string, payload interface{}) {
 		}
 	}
 }
-

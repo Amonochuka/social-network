@@ -6,6 +6,7 @@ import { SearchUI } from "@/components/main/header";
 import { Logo } from "@/components/sidebar/sidebar";
 import { searchService, SearchUser } from "@/services/searchService";
 import { Api } from "@/services/axios";
+import { useSocketContext } from "@/contexts/SocketContext";
 import Link from "next/link";
 
 interface ConversationPreview {
@@ -22,10 +23,13 @@ function timeAgo(dateString: string): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
 
   if (seconds < 60) return `${seconds}s`;
+
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m`;
+
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h`;
+
   const days = Math.floor(hours / 24);
   return `${days}d`;
 }
@@ -36,6 +40,8 @@ export default function ChatSideBar() {
 
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<ConversationPreview[]>([]);
+
+  const { onlineUsers } = useSocketContext();
 
   const mapSearchUsers = (users: SearchUser[]): ConversationPreview[] =>
     users.map((user) => ({
@@ -114,44 +120,62 @@ export default function ChatSideBar() {
               : "No conversations yet. Follow someone and start chatting."}
           </p>
         ) : (
-          displayList.map((convo) => (
-            <Link
-              href={`/view/Messages/${convo.user_id}`}
-              key={convo.user_id}
-              className="flex justify-between w-full rounded-b-md px-2 py-3 cursor-pointer hover:rounded-lg hover:bg-[#383737]"
-            >
-              <div className="flex gap-3 items-start flex-1 min-w-0">
-                <UserProfileImage
-                  url={
-                    convo.avatar
-                      ? convo.avatar.startsWith("http")
-                        ? convo.avatar
-                        : `http://localhost:8080/${convo.avatar}`
-                      : undefined
-                  }
-                  name={`${convo.first_name} ${convo.last_name}`}
-                />
+          displayList.map((convo) => {
+            const isOnline = onlineUsers.has(convo.user_id);
 
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate">
-                    {convo.first_name} {convo.last_name}
-                  </p>
+            return (
+              <Link
+                href={`/view/Messages/${convo.user_id}`}
+                key={convo.user_id}
+                className="flex justify-between w-full rounded-lg px-2 py-3 hover:bg-[#383737] transition-colors"
+              >
+                <div className="flex gap-3 items-start flex-1 min-w-0">
+                  <div className="relative shrink-0">
+                    <UserProfileImage
+                      url={
+                        convo.avatar
+                          ? convo.avatar.startsWith("http")
+                            ? convo.avatar
+                            : `http://localhost:8080/${convo.avatar}`
+                          : undefined
+                      }
+                      name={`${convo.first_name} ${convo.last_name}`}
+                    />
 
-                  {convo.last_message && (
-                    <p className="text-sm text-gray-400 truncate">
-                      {convo.last_message}
-                    </p>
-                  )}
+                    {isOnline && (
+                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-[#222222]" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold truncate">
+                        {convo.first_name} {convo.last_name}
+                      </p>
+
+                      {isOnline && (
+                        <span className="text-xs text-green-500 font-medium">
+                          Online
+                        </span>
+                      )}
+                    </div>
+
+                    {convo.last_message && (
+                      <p className="text-sm text-gray-400 truncate">
+                        {convo.last_message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {convo.last_message_at && (
-                <p className="text-sm shrink-0 text-gray-300 font-bold">
-                  {timeAgo(convo.last_message_at)}
-                </p>
-              )}
-            </Link>
-          ))
+                {convo.last_message_at && (
+                  <p className="text-sm shrink-0 text-gray-300 font-bold">
+                    {timeAgo(convo.last_message_at)}
+                  </p>
+                )}
+              </Link>
+            );
+          })
         )}
       </div>
     </aside>
