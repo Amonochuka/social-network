@@ -559,11 +559,12 @@ func (s *GroupService) ToggleGroupPostLike(postID, userID string) (liked bool, l
 
 // ── Group Chat ────────────────────────────────────────────────────────────────
 
-func (s *GroupService) SendGroupMessage(groupID, senderID, content string) (*models.GroupMessage, error) {
+func (s *GroupService) SendGroupMessage(groupID, senderID, content string) (*models.GroupMessageDetailFull, error) {
 	isMember, _ := s.groupRepo.IsMember(groupID, senderID)
 	if !isMember {
 		return nil, errors.New("you must be a group member to send messages")
 	}
+	
 	msg := &models.GroupMessage{
 		ID:        uuid.New().String(),
 		GroupID:   groupID,
@@ -574,7 +575,23 @@ func (s *GroupService) SendGroupMessage(groupID, senderID, content string) (*mod
 	if err := s.groupRepo.CreateGroupChatMessage(msg); err != nil {
 		return nil, errors.New("could not send message")
 	}
-	return msg, nil
+
+	user, err := s.userRepo.GetUserByID(senderID)
+	if err != nil {
+		return nil, errors.New("could not find sender")
+	}
+
+	detail := &models.GroupMessageDetailFull{
+		ID:           msg.ID,
+		GroupID:      msg.GroupID,
+		SenderID:     msg.SenderID,
+		SenderName:   user.FirstName + " " + user.LastName,
+		SenderAvatar: user.Avatar,
+		Content:      msg.Content,
+		CreatedAt:    msg.CreatedAt,
+	}
+
+	return detail, nil
 }
 
 func (s *GroupService) GetGroupMessages(groupID, userID string) ([]*models.GroupMessageDetailFull, error) {

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Api } from "@/services/axios";
 import { useAppSelector } from "@/store/hooks";
 import { authSelector } from "@/store/features/authSlice";
+import { useSocketContext } from "@/contexts/SocketContext";
 import DefaultLayout from "@/components/layouts/defaultLayout";
 import UserProfileImage from "@/components/header/profile/userProfile";
 import {
@@ -100,6 +101,9 @@ function GroupDetailContent() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("posts");
 
+  const { getMessages, loadGroupConversation } = useSocketContext();
+  const messages = getMessages(groupId);
+
   // posts
   const [posts, setPosts] = useState<GroupPost[]>([]);
   const [newPostText, setNewPostText] = useState("");
@@ -110,7 +114,6 @@ function GroupDetailContent() {
   const [showCreateEvent, setShowCreateEvent] = useState(false);
 
   // chat
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
   const [sendingChat, setSendingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -146,14 +149,18 @@ function GroupDetailContent() {
         .then((res) => setEvents(res.data ?? []))
         .catch(() => setEvents([]));
     } else if (activeTab === "chat") {
-      Api.get<ChatMessage[]>(`/groups/${groupId}/chat`)
-        .then((res) => {
-          setMessages(res.data ?? []);
-          setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-        })
-        .catch(() => setMessages([]));
+      loadGroupConversation(groupId).then(() => {
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      });
     }
-  }, [activeTab, group?.is_member, groupId]);
+  }, [activeTab, group?.is_member, groupId, loadGroupConversation]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (activeTab === "chat") {
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    }
+  }, [messages, activeTab]);
 
   const handleJoinRequest = async () => {
     try {
@@ -203,9 +210,6 @@ function GroupDetailContent() {
     try {
       await Api.post(`/groups/${groupId}/chat`, { content: chatText });
       setChatText("");
-      const res = await Api.get<ChatMessage[]>(`/groups/${groupId}/chat`);
-      setMessages(res.data ?? []);
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch (err) {
       console.error("Failed to send message:", err);
     } finally {
@@ -440,18 +444,18 @@ function GroupDetailContent() {
                   <div className="text-center text-sm text-gray-500 py-8">No messages yet. Say hello!</div>
                 ) : (
                   messages.map((msg) => {
-                    const isMine = msg.sender_id === user?.id;
+                    const isMine = msg.senderId === user?.id;
                     return (
-                      <div key={msg.id} className={`flex gap-3 ${isMine ? "flex-row-reverse" : ""}`}>
+                      <div key={msg.messageId} className={`flex gap-3 ${isMine ? "flex-row-reverse" : ""}`}>
                         <UserProfileImage
-                          url={msg.sender_avatar ? (msg.sender_avatar.startsWith("http") ? msg.sender_avatar : `http://localhost:8080/${msg.sender_avatar}`) : undefined}
-                          name={msg.sender_name}
+                          url={msg.senderAvatar ? (msg.senderAvatar.startsWith("http") ? msg.senderAvatar : `http://localhost:8080/${msg.senderAvatar}`) : undefined}
+                          name={msg.senderName}
                         />
                         <div className={`max-w-[60%] rounded-xl px-4 py-2.5 ${isMine ? "bg-[--primary-theme] text-black" : "bg-[#2a2a2a] text-white"}`}>
-                          {!isMine && <p className="text-xs font-semibold mb-1 opacity-70">{msg.sender_name}</p>}
+                          {!isMine && <p className="text-xs font-semibold mb-1 opacity-70">{msg.senderName}</p>}
                           <p className="text-sm">{msg.content}</p>
                           <p className={`text-[10px] mt-1 ${isMine ? "text-black/50" : "text-gray-500"}`}>
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       </div>
@@ -616,7 +620,7 @@ function GroupPostCard({
             className="text-gray-500 group-hover:text-sky-400 transition-colors"
           />
           <span className="text-sm font-medium text-gray-500 group-hover:text-sky-400 transition-colors">
-            Comment
+            {post.comment_count}
           </span>
         </button>
       </div>

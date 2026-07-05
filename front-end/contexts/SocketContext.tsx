@@ -19,6 +19,7 @@ interface SocketContextValue {
   onlineUsers: Set<string>;
   getMessages: (conversationId: string) => ChatMessages[];
   loadConversation: (otherUserId: string) => Promise<void>;
+  loadGroupConversation: (groupId: string) => Promise<void>;
   sendMessage: (receiverId: string, content: string) => Promise<void>;
 }
 
@@ -103,6 +104,34 @@ export function WebSocketProvider({
         }));
       } catch (err) {
         console.error("Failed to load conversation", err);
+      }
+    },
+    [messagesByUser]
+  );
+
+  const loadGroupConversation = useCallback(
+    async (groupId: string) => {
+      if (!groupId) return;
+      if (messagesByUser[groupId]) return;
+
+      try {
+        const res = await Api.get(`/groups/${groupId}/chat`);
+        const history: ChatMessages[] = (res.data ?? []).map((m: any) => ({
+          messageId: m.id,
+          senderId: String(m.sender_id),
+          senderName: m.sender_name,
+          senderAvatar: m.sender_avatar,
+          receiverId: String(m.group_id),
+          content: m.content,
+          createdAt: m.created_at,
+        }));
+
+        setMessagesByUser((prev) => ({
+          ...prev,
+          [groupId]: history,
+        }));
+      } catch (err) {
+        console.error("Failed to load group conversation", err);
       }
     },
     [messagesByUser]
@@ -195,6 +224,23 @@ export function WebSocketProvider({
             break;
           }
 
+          case "group_message": {
+            const m = payload.message;
+            if (!m) return;
+
+            const groupId = String(m.group_id);
+            addMessageToConversation(groupId, {
+              messageId: m.id,
+              senderId: String(m.sender_id),
+              senderName: m.sender_name,
+              senderAvatar: m.sender_avatar,
+              receiverId: groupId,
+              content: m.content,
+              createdAt: m.created_at,
+            });
+            break;
+          }
+
           case "presence_update": {
             const users = payload.online_users ?? [];
             setOnlineUsers(new Set(users.map(String)));
@@ -241,6 +287,7 @@ export function WebSocketProvider({
         onlineUsers,
         getMessages,
         loadConversation,
+        loadGroupConversation,
         sendMessage,
       }}
     >
