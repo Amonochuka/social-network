@@ -7,6 +7,7 @@ import UserProfileImage from "../header/profile/userProfile";
 
 interface Props {
   likes: number;
+  likedByMe?: boolean;
   comments: number;
   postId: string;
   postDetails?: {
@@ -21,9 +22,20 @@ interface Props {
   };
 }
 
-export function PostInteractions({ likes, comments, postId, postDetails }: Props) {
+export function PostInteractions({ likes, likedByMe = false, comments, postId, postDetails }: Props) {
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+
+  // Like state — initialised from props, updated optimistically
+  const [liked, setLiked] = useState(likedByMe);
+  const [likeCount, setLikeCount] = useState(likes);
+  const [liking, setLiking] = useState(false);
+
+  // Keep in sync if the parent re-renders with fresh data
+  useEffect(() => {
+    setLiked(likedByMe);
+    setLikeCount(likes);
+  }, [likedByMe, likes]);
 
   useEffect(() => {
     try {
@@ -33,6 +45,31 @@ export function PostInteractions({ likes, comments, postId, postDetails }: Props
       setIsBookmarked(false);
     }
   }, [postId]);
+
+  const handleLike = async () => {
+    if (liking) return;
+    // Optimistic update
+    const prevLiked = liked;
+    const prevCount = likeCount;
+    setLiked(!liked);
+    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+    setLiking(true);
+    try {
+      const res = await Api.post<{ liked: boolean; like_count: number }>(
+        `/posts/${postId}/like`
+      );
+      // Sync with server truth
+      setLiked(res.data.liked);
+      setLikeCount(res.data.like_count);
+    } catch (err) {
+      // Rollback on failure
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+      console.error("Failed to toggle like:", err);
+    } finally {
+      setLiking(false);
+    }
+  };
 
   const handleBookmark = () => {
     try {
@@ -65,11 +102,27 @@ export function PostInteractions({ likes, comments, postId, postDetails }: Props
       <div className="flex items-center justify-between mt-1 text-gray-500 w-full max-w-md">
         <div className="flex items-center gap-12">
           {/* Like Button */}
-          <button className="group flex items-center gap-1.5 transition-colors">
-            <div className="p-2 rounded-full group-hover:bg-pink-500/10 group-hover:text-pink-500 transition-colors">
-              <Heart size={18} />
+          <button
+            onClick={handleLike}
+            disabled={liking}
+            className="group flex items-center gap-1.5 transition-colors"
+          >
+            <div className={`p-2 rounded-full transition-colors ${
+              liked
+                ? "text-pink-500"
+                : "group-hover:bg-pink-500/10 group-hover:text-pink-500"
+            }`}>
+              <Heart
+                size={18}
+                fill={liked ? "currentColor" : "none"}
+                className={liked ? "text-pink-500" : ""}
+              />
             </div>
-            <span className="text-sm font-medium group-hover:text-pink-500 transition-colors">{likes}</span>
+            <span className={`text-sm font-medium transition-colors ${
+              liked ? "text-pink-500" : "group-hover:text-pink-500"
+            }`}>
+              {likeCount}
+            </span>
           </button>
           
           {/* Comment Button */}

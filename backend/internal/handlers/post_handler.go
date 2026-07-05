@@ -309,3 +309,30 @@ func (h *PostHandler) GetCommentsByPostID(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(comments)
 }
+
+func (h *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userID := middleware.GetUserID(r)
+	if userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	postID := r.PathValue("post_id")
+	if postID == "" {
+		http.Error(w, "post_id is required", http.StatusBadRequest)
+		return
+	}
+	liked, likeCount, err := h.postService.ToggleLike(postID, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"liked":      liked,
+		"like_count": likeCount,
+	})
+}

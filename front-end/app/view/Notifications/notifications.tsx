@@ -49,6 +49,10 @@ function actionText(type: string): string {
       return "accepted your request to join the group.";
     case "group_join_request_declined":
       return "declined your request to join the group.";
+    case "post_liked":
+      return "liked your post.";
+    case "post_commented":
+      return "commented on your post.";
     default:
       return "sent you a notification.";
   }

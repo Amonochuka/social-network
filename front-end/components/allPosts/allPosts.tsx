@@ -31,6 +31,8 @@ interface FeedPost {
   media_type: string;
   privacy: string;
   comment_count: number;
+  like_count: number;
+  liked_by_me: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -373,7 +375,8 @@ export function UserPostContent({ post }: { post: FeedPost }) {
           <PostInteractions 
             postId={post.id} 
             comments={post.comment_count} 
-            likes={0} 
+            likes={post.like_count}
+            likedByMe={post.liked_by_me}
             postDetails={post} 
           />
         </div>

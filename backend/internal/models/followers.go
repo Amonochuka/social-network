@@ -51,6 +51,8 @@ type FeedPost struct {
 	MediaType    string    `json:"media_type"`
 	Privacy      string    `json:"privacy"`
 	CommentCount int       `json:"comment_count"`
+	LikeCount    int       `json:"like_count"`
+	LikedByMe    bool      `json:"liked_by_me"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

@@ -204,3 +204,41 @@ func (s *PostService) GetCommentsByPostID(postID string) ([]*models.CommentDetai
 	}
 	return comments, nil
 }
+
+func (s *PostService) ToggleLike(postID, userID string) (liked bool, likeCount int, err error) {
+	// Ensure the post exists before liking
+	post, err := s.postRepo.GetPostByID(postID)
+	if err != nil {
+		return false, 0, errors.New("post not found")
+	}
+
+	liked, likeCount, err = s.postRepo.ToggleLike(postID, userID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	// Don't notify yourself
+	if post.UserID == userID {
+		return liked, likeCount, nil
+	}
+
+	if liked {
+		// Send "post_liked" notification to the post owner
+		notification := &models.Notification{
+			ID:          uuid.New().String(),
+			UserID:      post.UserID,
+			ActorID:     userID,
+			Type:        "post_liked",
+			ReferenceID: postID,
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
+		// Non-fatal — like still succeeds even if notification fails
+		_ = s.notificationRepo.CreateNotification(notification)
+	} else {
+		// Remove the notification when unliking
+		_ = s.notificationRepo.DeleteNotificationByReferenceID(postID, "post_liked")
+	}
+
+	return liked, likeCount, nil
+}

@@ -57,6 +57,10 @@ type PostRepository interface {
 	// comments
 	CreateComment(comment *models.Comment) error
 	GetCommentsByPostID(postID string) ([]*models.CommentDetail, error)
+	// likes
+	ToggleLike(postID, userID string) (liked bool, likeCount int, err error)
+	HasLiked(postID, userID string) (bool, error)
+	CountLikes(postID string) (int, error)
 }
 
 type ChatRepository interface {

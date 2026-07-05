@@ -79,6 +79,7 @@ func Register(
 	mux.Handle("/api/users/{user_id}/posts", auth.Authenticate(http.HandlerFunc(postHandler.GetPostsByUserID)))
 	mux.Handle("/api/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(postHandler.CreateComment)))
 	mux.Handle("/api/posts/{post_id}/comments/all", auth.Authenticate(http.HandlerFunc(postHandler.GetCommentsByPostID)))
+	mux.Handle("/api/posts/{post_id}/like", auth.Authenticate(http.HandlerFunc(postHandler.LikePost)))
 
 	// ==========================
 	// Notifications

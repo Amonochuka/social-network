@@ -119,13 +119,15 @@ func (r *postRepository) GetPostsByUserID(userID, viewerID string) ([]*models.Po
 	return posts, nil
 }
 
-// GetFeed now joins users to include author name and avatar
+// GetFeed joins users to include author name, avatar, like count, and liked-by-current-user flag.
 func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 
 	rows, err := r.db.Query(`
 		SELECT p.id, p.user_id, u.first_name || ' ' || u.last_name AS author_name, u.avatar,
 		       p.content, p.media_path, p.media_type, p.privacy,
 		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+		       (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
+		       (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS liked_by_me,
 		       p.created_at, p.updated_at
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
@@ -148,7 +150,7 @@ func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 			))
 		)
 		ORDER BY p.created_at DESC
-	`, userID, userID, userID, userID, userID)
+	`, userID, userID, userID, userID, userID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,10 +160,17 @@ func (r *postRepository) GetFeed(userID string) ([]*models.FeedPost, error) {
 	var posts []*models.FeedPost
 	for rows.Next() {
 		var p models.FeedPost
-		err := rows.Scan(&p.ID, &p.UserID, &p.AuthorName, &p.AuthorAvatar, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CommentCount, &p.CreatedAt, &p.UpdatedAt)
+		var likedByMe int
+		err := rows.Scan(
+			&p.ID, &p.UserID, &p.AuthorName, &p.AuthorAvatar,
+			&p.Content, &p.MediaPath, &p.MediaType, &p.Privacy,
+			&p.CommentCount, &p.LikeCount, &likedByMe,
+			&p.CreatedAt, &p.UpdatedAt,
+		)
 		if err != nil {
 			return nil, err
 		}
+		p.LikedByMe = likedByMe > 0
 		posts = append(posts, &p)
 	}
 	return posts, nil
@@ -208,4 +217,56 @@ func (r *postRepository) GetCommentsByPostID(postID string) ([]*models.CommentDe
 		comments = append(comments, &c)
 	}
 	return comments, nil
+}
+
+// ToggleLike adds a like if the user hasn't liked yet, or removes it if they have.
+// Returns the new liked state and the updated total like count.
+func (r *postRepository) ToggleLike(postID, userID string) (bool, int, error) {
+	var count int
+	err := r.db.QueryRow(
+		`SELECT COUNT(*) FROM post_likes WHERE post_id = ? AND user_id = ?`,
+		postID, userID,
+	).Scan(&count)
+	if err != nil {
+		return false, 0, err
+	}
+
+	var liked bool
+	if count > 0 {
+		// already liked — remove it
+		_, err = r.db.Exec(`DELETE FROM post_likes WHERE post_id = ? AND user_id = ?`, postID, userID)
+		liked = false
+	} else {
+		// not yet liked — add it
+		_, err = r.db.Exec(
+			`INSERT INTO post_likes (post_id, user_id, created_at) VALUES (?, ?, datetime('now'))`,
+			postID, userID,
+		)
+		liked = true
+	}
+	if err != nil {
+		return false, 0, err
+	}
+
+	var total int
+	err = r.db.QueryRow(`SELECT COUNT(*) FROM post_likes WHERE post_id = ?`, postID).Scan(&total)
+	if err != nil {
+		return liked, 0, err
+	}
+	return liked, total, nil
+}
+
+func (r *postRepository) HasLiked(postID, userID string) (bool, error) {
+	var count int
+	err := r.db.QueryRow(
+		`SELECT COUNT(*) FROM post_likes WHERE post_id = ? AND user_id = ?`,
+		postID, userID,
+	).Scan(&count)
+	return count > 0, err
+}
+
+func (r *postRepository) CountLikes(postID string) (int, error) {
+	var count int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM post_likes WHERE post_id = ?`, postID).Scan(&count)
+	return count, err
 }
