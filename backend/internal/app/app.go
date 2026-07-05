@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"social-network/backend/internal/config"
 	"social-network/backend/internal/handlers"
 	"social-network/backend/internal/middleware"
@@ -26,8 +27,16 @@ func New() (*App, error) {
 	// load env vars (.env file) — needed for Google OAuth credentials
 	cfg := config.Load()
 
-	// Ensure upload directory exists for avatars before server starts
+	// Ensure upload directories exist before server starts
 	if err := os.MkdirAll("uploads/avatars", 0755); err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll("uploads/posts", 0755); err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll("uploads/comments", 0755); err != nil {
 		return nil, err
 	}
 
@@ -67,9 +76,34 @@ func New() (*App, error) {
 	// 6. routes
 	mux := http.NewServeMux()
 
-	routes.Register(mux, authHandler, followerHandler, postHandler, notificationHandler, oauthHandler, chatHandler, groupHandler, searchHandler, sessionService,)
+	// Serve uploaded files (avatars, posts, comments)
+	mux.Handle(
+		"/uploads/",
+		http.StripPrefix(
+			"/uploads/",
+			http.FileServer(http.Dir("./uploads")),
+		),
+	)
+
+	routes.Register(
+		mux,
+		authHandler,
+		followerHandler,
+		postHandler,
+		notificationHandler,
+		oauthHandler,
+		chatHandler,
+		groupHandler,
+		searchHandler,
+		sessionService,
+	)
+
 	log.Println("app initialised")
-	return &App{Router: mux, Hub: hub}, nil
+
+	return &App{
+		Router: mux,
+		Hub:    hub,
+	}, nil
 }
 
 func (a *App) ChainMiddlewares() http.Handler {

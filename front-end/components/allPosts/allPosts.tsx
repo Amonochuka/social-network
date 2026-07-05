@@ -50,7 +50,7 @@ export default function UserPostUI() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // privacy
-  const [privacy, setPrivacy] = useState<"public" | "almost_private" | "private">("public");
+  const [privacy, setPrivacy] = useState<"public" | "followers" | "selected">("public");
   const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
 
   // private follower picker
@@ -64,7 +64,7 @@ export default function UserPostUI() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (privacy === "private") {
+    if (privacy === "selected") {
       Api.get<FollowerOption[]>("/followers")
         .then((res) => setFollowers(res.data ?? []))
         .catch(() => setFollowers([]));
@@ -107,8 +107,10 @@ export default function UserPostUI() {
         formData.append("media", mediaFile);
       }
 
-      if (privacy === "private" && selectedFollowers.length > 0) {
-        formData.append("allowed_users", JSON.stringify(selectedFollowers));
+      if (privacy === "selected") {
+        selectedFollowers.forEach((id) => {
+        formData.append("allowed_users", id);
+        });
       }
 
       await Api.post("/posts", formData, {
@@ -136,10 +138,10 @@ export default function UserPostUI() {
   const myFullName = user ? `${user.first_name} ${user.last_name}` : "?";
 
   const privacyLabels = {
-    public: { icon: Globe, label: "Everyone can reply" },
-    almost_private: { icon: Users, label: "Followers only" },
-    private: { icon: Lock, label: "Selected followers" },
-  };
+  public: { icon: Globe, label: "Everyone can reply" },
+  followers: { icon: Users, label: "Followers only" },
+  selected: { icon: Lock, label: "Selected followers" },
+};
 
   const PrivacyIcon = privacyLabels[privacy].icon;
 
@@ -191,7 +193,7 @@ export default function UserPostUI() {
 
             {showPrivacyMenu && (
               <div className="absolute top-full left-0 mt-1 bg-black shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/20 rounded-xl overflow-hidden z-50 min-w-[220px]">
-                {(["public", "almost_private", "private"] as const).map((p) => {
+                {(["public", "followers", "selected"] as const).map((p) => {
                   const Icon = privacyLabels[p].icon;
                   return (
                     <button
@@ -258,7 +260,7 @@ export default function UserPostUI() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/gif,video/mp4"
+                accept="image/jpeg,image/png,image/gif"
                 onChange={handleMediaSelect}
                 hidden
               />
@@ -358,13 +360,11 @@ export function UserPostContent({ post }: { post: FeedPost }) {
         {/* Media */}
         {post.media_path && (
           <div className="mt-3 relative w-full rounded-2xl overflow-hidden border border-white/10">
-            <Image
-              src={`http://localhost:8080/${post.media_path}`}
-              width={600}
-              height={400}
-              className="w-full h-auto object-cover max-h-[500px]"
-              alt="Post attachment"
-            />
+           <img
+            src={`http://localhost:8080/${post.media_path}`}
+            className="w-full h-auto object-cover max-h-[500px] rounded-2xl"
+            alt="Post attachment"
+          />
           </div>
         )}
 

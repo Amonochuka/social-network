@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -79,6 +80,11 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 	post, err := h.postService.CreatePost(userID, content, mediaPath, mediaType, privacy, allowedUsers)
 	if err != nil {
+		log.Println("POST ERROR")
+		log.Println("privacy:", privacy)
+		log.Println("allowedUsers:", allowedUsers)
+		log.Println("err:", err)
+
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
