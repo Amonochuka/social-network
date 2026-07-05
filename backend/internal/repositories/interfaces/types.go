@@ -103,9 +103,14 @@ type GroupRepository interface {
 	GetMyEventResponse(eventID, userID string) (string, error)
 	// group posts
 	CreateGroupPost(post *models.GroupPost) error
-	GetGroupPosts(groupID string) ([]*models.GroupPostDetail, error)
+	GetGroupPostByID(postID string) (*models.GroupPost, error)
+	GetGroupPosts(groupID, userID string) ([]*models.GroupPostDetail, error)
+	DeleteGroupPost(postID string) error
 	CreateGroupComment(comment *models.GroupComment) error
 	GetGroupComments(groupPostID string) ([]*models.GroupCommentDetail, error)
+	ToggleGroupPostLike(postID, userID string) (liked bool, likeCount int, err error)
+	HasLikedGroupPost(postID, userID string) (bool, error)
+	CountGroupPostLikes(postID string) (int, error)
 	// group chat
 	CreateGroupChatMessage(msg *models.GroupMessage) error
 	GetGroupChatMessages(groupID string) ([]*models.GroupMessageDetailFull, error)

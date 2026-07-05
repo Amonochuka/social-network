@@ -331,18 +331,31 @@ func (r *GroupRepository) CreateGroupPost(post *models.GroupPost) error {
 	return err
 }
 
-func (r *GroupRepository) GetGroupPosts(groupID string) ([]*models.GroupPostDetail, error) {
+func (r *GroupRepository) DeleteGroupPost(postID string) error {
+	_, err := r.db.Exec(`DELETE FROM group_posts WHERE id = ?`, postID)
+	return err
+}
+
+func (r *GroupRepository) GetGroupPostByID(postID string) (*models.GroupPost, error) {
+	row := r.db.QueryRow(`SELECT id, group_id, user_id, content, media_path, media_type, created_at FROM group_posts WHERE id = ?`, postID)
+	p := &models.GroupPost{}
+	return p, row.Scan(&p.ID, &p.GroupID, &p.UserID, &p.Content, &p.MediaPath, &p.MediaType, &p.CreatedAt)
+}
+
+func (r *GroupRepository) GetGroupPosts(groupID, userID string) ([]*models.GroupPostDetail, error) {
 	rows, err := r.db.Query(`
 		SELECT gp.id, gp.group_id, gp.user_id,
 		       u.first_name || ' ' || u.last_name,
 		       COALESCE(u.avatar,''),
 		       gp.content, COALESCE(gp.media_path,''), COALESCE(gp.media_type,''),
 		       (SELECT COUNT(*) FROM group_comments gc WHERE gc.group_post_id = gp.id),
+		       (SELECT COUNT(*) FROM group_post_likes gpl WHERE gpl.group_post_id = gp.id),
+		       (SELECT COUNT(*) FROM group_post_likes gpl WHERE gpl.group_post_id = gp.id AND gpl.user_id = ?),
 		       gp.created_at
 		FROM group_posts gp
 		JOIN users u ON u.id = gp.user_id
 		WHERE gp.group_id = ?
-		ORDER BY gp.created_at DESC`, groupID)
+		ORDER BY gp.created_at DESC`, userID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -350,10 +363,12 @@ func (r *GroupRepository) GetGroupPosts(groupID string) ([]*models.GroupPostDeta
 	var posts []*models.GroupPostDetail
 	for rows.Next() {
 		p := &models.GroupPostDetail{}
+		var likedByMe int
 		if err := rows.Scan(&p.ID, &p.GroupID, &p.UserID, &p.AuthorName, &p.AuthorAvatar,
-			&p.Content, &p.MediaPath, &p.MediaType, &p.CommentCount, &p.CreatedAt); err != nil {
+			&p.Content, &p.MediaPath, &p.MediaType, &p.CommentCount, &p.LikeCount, &likedByMe, &p.CreatedAt); err != nil {
 			return nil, err
 		}
+		p.LikedByMe = likedByMe > 0
 		posts = append(posts, p)
 	}
 	return posts, nil
@@ -391,6 +406,56 @@ func (r *GroupRepository) GetGroupComments(groupPostID string) ([]*models.GroupC
 		comments = append(comments, c)
 	}
 	return comments, nil
+}
+
+// ── Group Post Likes ──────────────────────────────────────────────────────────
+
+func (r *GroupRepository) ToggleGroupPostLike(postID, userID string) (bool, int, error) {
+	var count int
+	err := r.db.QueryRow(
+		`SELECT COUNT(*) FROM group_post_likes WHERE group_post_id = ? AND user_id = ?`,
+		postID, userID,
+	).Scan(&count)
+	if err != nil {
+		return false, 0, err
+	}
+
+	var liked bool
+	if count > 0 {
+		_, err = r.db.Exec(`DELETE FROM group_post_likes WHERE group_post_id = ? AND user_id = ?`, postID, userID)
+		liked = false
+	} else {
+		_, err = r.db.Exec(
+			`INSERT INTO group_post_likes (group_post_id, user_id, created_at) VALUES (?, ?, datetime('now'))`,
+			postID, userID,
+		)
+		liked = true
+	}
+	if err != nil {
+		return false, 0, err
+	}
+
+	var total int
+	err = r.db.QueryRow(`SELECT COUNT(*) FROM group_post_likes WHERE group_post_id = ?`, postID).Scan(&total)
+	if err != nil {
+		return liked, 0, err
+	}
+	return liked, total, nil
+}
+
+func (r *GroupRepository) HasLikedGroupPost(postID, userID string) (bool, error) {
+	var count int
+	err := r.db.QueryRow(
+		`SELECT COUNT(*) FROM group_post_likes WHERE group_post_id = ? AND user_id = ?`,
+		postID, userID,
+	).Scan(&count)
+	return count > 0, err
+}
+
+func (r *GroupRepository) CountGroupPostLikes(postID string) (int, error) {
+	var count int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM group_post_likes WHERE group_post_id = ?`, postID).Scan(&count)
+	return count, err
 }
 
 // ── Group Chat ───────────────────────────────────────────────────────────────

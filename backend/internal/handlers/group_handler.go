@@ -376,6 +376,54 @@ func (h *GroupHandler) GetGroupPosts(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, posts)
 }
 
+// ── POST /api/groups/posts/{post_id}/like ─────────────────────────────────────
+
+func (h *GroupHandler) ToggleGroupPostLike(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userID := h.getUserID(r)
+	if userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	postID := r.PathValue("post_id")
+	if postID == "" {
+		http.Error(w, "post_id is required", http.StatusBadRequest)
+		return
+	}
+	liked, likeCount, err := h.groupService.ToggleGroupPostLike(postID, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	h.respondJSON(w, http.StatusOK, map[string]any{
+		"liked":      liked,
+		"like_count": likeCount,
+	})
+}
+
+// ── DELETE /api/groups/posts/{post_id} ───────────────────────────────────────
+
+func (h *GroupHandler) DeleteGroupPost(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userID := h.getUserID(r)
+	if userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	postID := r.PathValue("post_id")
+	if err := h.groupService.DeleteGroupPost(postID, userID); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	h.respondJSON(w, http.StatusOK, map[string]string{"message": "post deleted"})
+}
+
 // ── POST /api/groups/posts/{post_id}/comments ─────────────────────────────────
 
 func (h *GroupHandler) CreateGroupComment(w http.ResponseWriter, r *http.Request) {

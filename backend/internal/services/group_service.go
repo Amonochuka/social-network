@@ -437,15 +437,40 @@ func (s *GroupService) CreateGroupPost(groupID, userID, content, mediaPath, medi
 	return post, nil
 }
 
+func (s *GroupService) DeleteGroupPost(postID, userID string) error {
+	post, err := s.groupRepo.GetGroupPostByID(postID)
+	if err != nil {
+		return errors.New("group post not found")
+	}
+	if post.UserID != userID {
+		return errors.New("you can only delete your own posts")
+	}
+	return s.groupRepo.DeleteGroupPost(postID)
+}
+
 func (s *GroupService) GetGroupPosts(groupID, userID string) ([]*models.GroupPostDetail, error) {
 	isMember, _ := s.groupRepo.IsMember(groupID, userID)
 	if !isMember {
 		return nil, errors.New("you must be a group member to view posts")
 	}
-	return s.groupRepo.GetGroupPosts(groupID)
+	return s.groupRepo.GetGroupPosts(groupID, userID)
 }
 
-func (s *GroupService) CreateGroupComment(groupPostID, userID, content, mediaPath, mediaType string) (*models.GroupComment, error) {
+func (s *GroupService) CreateGroupComment(groupPostID, userID, content, mediaPath, mediaType string) (*models.GroupCommentDetail, error) {
+	if content == "" && mediaPath == "" {
+		return nil, errors.New("comment must have content or media")
+	}
+
+	post, err := s.groupRepo.GetGroupPostByID(groupPostID)
+	if err != nil {
+		return nil, errors.New("group post not found")
+	}
+
+	isMember, _ := s.groupRepo.IsMember(post.GroupID, userID)
+	if !isMember {
+		return nil, errors.New("you must be a group member to comment")
+	}
+
 	comment := &models.GroupComment{
 		ID:          uuid.New().String(),
 		GroupPostID: groupPostID,
@@ -458,11 +483,78 @@ func (s *GroupService) CreateGroupComment(groupPostID, userID, content, mediaPat
 	if err := s.groupRepo.CreateGroupComment(comment); err != nil {
 		return nil, errors.New("could not create comment")
 	}
-	return comment, nil
+
+	if post.UserID != userID {
+		notification := &models.Notification{
+			ID:          uuid.New().String(),
+			UserID:      post.UserID,
+			ActorID:     userID,
+			Type:        "post_commented",
+			ReferenceID: groupPostID,
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
+		_ = s.notificationRepo.CreateNotification(notification)
+	}
+
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found for comment")
+	}
+
+	commentDetail := &models.GroupCommentDetail{
+		ID:           comment.ID,
+		GroupPostID:  comment.GroupPostID,
+		UserID:       comment.UserID,
+		AuthorName:   user.FirstName + " " + user.LastName,
+		AuthorAvatar: user.Avatar,
+		Content:      comment.Content,
+		MediaPath:    comment.MediaPath,
+		MediaType:    comment.MediaType,
+		CreatedAt:    comment.CreatedAt,
+	}
+
+	return commentDetail, nil
 }
 
 func (s *GroupService) GetGroupComments(groupPostID string) ([]*models.GroupCommentDetail, error) {
 	return s.groupRepo.GetGroupComments(groupPostID)
+}
+
+func (s *GroupService) ToggleGroupPostLike(postID, userID string) (liked bool, likeCount int, err error) {
+	post, err := s.groupRepo.GetGroupPostByID(postID)
+	if err != nil {
+		return false, 0, errors.New("group post not found")
+	}
+
+	isMember, _ := s.groupRepo.IsMember(post.GroupID, userID)
+	if !isMember {
+		return false, 0, errors.New("you must be a group member to like posts")
+	}
+
+	liked, likeCount, err = s.groupRepo.ToggleGroupPostLike(postID, userID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if post.UserID != userID {
+		if liked {
+			notification := &models.Notification{
+				ID:          uuid.New().String(),
+				UserID:      post.UserID,
+				ActorID:     userID,
+				Type:        "post_liked",
+				ReferenceID: postID,
+				IsRead:      false,
+				CreatedAt:   time.Now(),
+			}
+			_ = s.notificationRepo.CreateNotification(notification)
+		} else {
+			_ = s.notificationRepo.DeleteNotificationByReferenceID(postID, "post_liked")
+		}
+	}
+
+	return liked, likeCount, nil
 }
 
 // ── Group Chat ────────────────────────────────────────────────────────────────

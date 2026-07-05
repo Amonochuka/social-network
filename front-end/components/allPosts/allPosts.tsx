@@ -287,6 +287,7 @@ export default function UserPostUI() {
 export function AllPostUI({ refreshKey }: { refreshKey: number }) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAppSelector(authSelector);
 
   useEffect(() => {
     const fetchFeed = async () => {
@@ -320,18 +321,50 @@ export function AllPostUI({ refreshKey }: { refreshKey: number }) {
   return (
     <div className="flex flex-col w-full">
       {posts.map((post) => (
-        <UserPostContent key={post.id} post={post} />
+        <UserPostContent
+          key={post.id}
+          post={post}
+          currentUserId={user?.id ?? ""}
+          onDeleted={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+        />
       ))}
     </div>
   );
 }
 
-export function UserPostContent({ post }: { post: FeedPost }) {
+export function UserPostContent({
+  post,
+  currentUserId,
+  onDeleted,
+}: {
+  post: FeedPost;
+  currentUserId?: string;
+  onDeleted?: (id: string) => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
   const avatarUrl = post.author_avatar
     ? post.author_avatar.startsWith("http")
       ? post.author_avatar
       : `http://localhost:8080/${post.author_avatar}`
     : undefined;
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this post?")) return;
+    setDeleting(true);
+    setShowMenu(false);
+    try {
+      await Api.delete(`/posts/${post.id}/delete`);
+      onDeleted?.(post.id);
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const isOwner = currentUserId && post.user_id === currentUserId;
 
   return (
     <article className="flex gap-3 p-4 border-b border-white/10 hover:bg-white/[0.02] transition-colors cursor-pointer">
@@ -349,9 +382,25 @@ export function UserPostContent({ post }: { post: FeedPost }) {
             </span>
           </div>
           
-          <button className="text-gray-500 hover:text-[--primary-theme] hover:bg-[--primary-theme]/10 p-1.5 rounded-full transition-colors shrink-0">
-            <MoreHorizontal size={18} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu((p) => !p)}
+              className="text-gray-500 hover:text-[--primary-theme] hover:bg-[--primary-theme]/10 p-1.5 rounded-full transition-colors shrink-0"
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            {showMenu && isOwner && (
+              <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 min-w-[130px] overflow-hidden">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-2 w-full px-4 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Delete post"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Content */}

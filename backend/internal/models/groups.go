@@ -90,6 +90,8 @@ type GroupPostDetail struct {
 	MediaPath    string    `json:"media_path"`
 	MediaType    string    `json:"media_type"`
 	CommentCount int       `json:"comment_count"`
+	LikeCount    int       `json:"like_count"`
+	LikedByMe    bool      `json:"liked_by_me"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 

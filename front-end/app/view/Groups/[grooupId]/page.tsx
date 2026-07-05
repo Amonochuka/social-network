@@ -10,7 +10,7 @@ import UserProfileImage from "@/components/header/profile/userProfile";
 import {
   Users, Calendar, MessageSquare, FileText,
   Send, Plus, X, Check, XCircle,
-  UserPlus, Clock,
+  UserPlus, Clock, Heart,
 } from "lucide-react";
 
 interface GroupDetail {
@@ -44,6 +44,8 @@ interface GroupPost {
   media_path: string;
   media_type: string;
   comment_count: number;
+  like_count: number;
+  liked_by_me: boolean;
   created_at: string;
 }
 
@@ -344,20 +346,12 @@ function GroupDetailContent() {
                 <div className="text-center text-sm text-gray-500 py-8">No posts yet. Be the first to post!</div>
               ) : (
                 posts.map((post) => (
-                  <div key={post.id} className="rounded-xl bg-[#222] p-5 border border-white/5">
-                    <div className="flex items-center gap-3 mb-3">
-                      <UserProfileImage
-                        url={post.author_avatar ? (post.author_avatar.startsWith("http") ? post.author_avatar : `http://localhost:8080/${post.author_avatar}`) : undefined}
-                        name={post.author_name}
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-white">{post.author_name}</p>
-                        <p className="text-xs text-gray-500">{new Date(post.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-300 leading-relaxed">{post.content}</p>
-                    <div className="mt-2 text-xs text-gray-500">{post.comment_count} comments</div>
-                  </div>
+                  <GroupPostCard
+                    key={post.id}
+                    post={post}
+                    currentUserId={user?.id ?? ""}
+                    onDeleted={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+                  />
                 ))
               )}
             </div>
@@ -513,6 +507,217 @@ function GroupDetailContent() {
       {showInviteModal && (
         <InviteModal groupId={groupId} onClose={() => setShowInviteModal(false)} />
       )}
+    </div>
+  );
+}
+
+function GroupPostCard({
+  post,
+  currentUserId,
+  onDeleted,
+}: {
+  post: GroupPost;
+  currentUserId: string;
+  onDeleted: (id: string) => void;
+}) {
+  const [liked, setLiked] = useState(post.liked_by_me);
+  const [likeCount, setLikeCount] = useState(post.like_count);
+  const [liking, setLiking] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleLike = async () => {
+    if (liking) return;
+    const prevLiked = liked;
+    const prevCount = likeCount;
+    setLiked(!liked);
+    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+    setLiking(true);
+    try {
+      const res = await Api.post<{ liked: boolean; like_count: number }>(
+        `/groups/posts/${post.id}/like`
+      );
+      setLiked(res.data.liked);
+      setLikeCount(res.data.like_count);
+    } catch {
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this post?")) return;
+    setDeleting(true);
+    try {
+      await Api.delete(`/groups/posts/${post.id}`);
+      onDeleted(post.id);
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl bg-[#222] p-5 border border-white/5">
+      <div className="flex items-center gap-3 mb-3">
+        <UserProfileImage
+          url={
+            post.author_avatar
+              ? post.author_avatar.startsWith("http")
+                ? post.author_avatar
+                : `http://localhost:8080/${post.author_avatar}`
+              : undefined
+          }
+          name={post.author_name}
+        />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-white">{post.author_name}</p>
+          <p className="text-xs text-gray-500">{new Date(post.created_at).toLocaleDateString()}</p>
+        </div>
+        {post.user_id === currentUserId && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-red-400/10"
+          >
+            {deleting ? "..." : "Delete"}
+          </button>
+        )}
+      </div>
+
+      <p className="text-sm text-gray-300 leading-relaxed">{post.content}</p>
+
+      {/* Interactions */}
+      <div className="flex items-center gap-8 mt-4 pt-3 border-t border-white/5">
+        <button
+          onClick={handleLike}
+          disabled={liking}
+          className="group flex items-center gap-1.5 transition-colors"
+        >
+          <Heart
+            size={17}
+            fill={liked ? "currentColor" : "none"}
+            className={liked ? "text-pink-500" : "text-gray-500 group-hover:text-pink-500 transition-colors"}
+          />
+          <span className={`text-sm font-medium transition-colors ${liked ? "text-pink-500" : "text-gray-500 group-hover:text-pink-500"}`}>
+            {likeCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setShowComments((p) => !p)}
+          className="group flex items-center gap-1.5 transition-colors"
+        >
+          <MessageSquare
+            size={17}
+            className="text-gray-500 group-hover:text-sky-400 transition-colors"
+          />
+          <span className="text-sm font-medium text-gray-500 group-hover:text-sky-400 transition-colors">
+            Comment
+          </span>
+        </button>
+      </div>
+
+      {showComments && <GroupCommentSection postId={post.id} />}
+    </div>
+  );
+}
+
+interface GroupCommentDetail {
+  id: string;
+  group_post_id: string;
+  user_id: string;
+  author_name: string;
+  author_avatar: string;
+  content: string;
+  media_path: string;
+  media_type: string;
+  created_at: string;
+}
+
+function GroupCommentSection({ postId }: { postId: string }) {
+  const [comments, setComments] = useState<GroupCommentDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  useEffect(() => {
+    Api.get<GroupCommentDetail[]>(`/groups/posts/${postId}/comments`)
+      .then((res) => setComments(res.data ?? []))
+      .catch(() => setComments([]))
+      .finally(() => setLoading(false));
+  }, [postId]);
+
+  const handleAddComment = async () => {
+    if (!text.trim() || posting) return;
+    setPosting(true);
+    try {
+      const formData = new FormData();
+      formData.append("content", text);
+      const res = await Api.post<GroupCommentDetail>(
+        `/groups/posts/${postId}/comments`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      setComments((prev) => [...prev, res.data]);
+      setText("");
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/10 flex flex-col gap-3">
+      {loading ? (
+        <p className="text-sm text-gray-500 animate-pulse text-center">Loading...</p>
+      ) : comments.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center">No comments yet.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {comments.map((c) => (
+            <div key={c.id} className="flex gap-2">
+              <div className="shrink-0 pt-0.5">
+                <UserProfileImage
+                  url={
+                    c.author_avatar
+                      ? c.author_avatar.startsWith("http")
+                        ? c.author_avatar
+                        : `http://localhost:8080/${c.author_avatar}`
+                      : undefined
+                  }
+                  name={c.author_name}
+                />
+              </div>
+              <div className="bg-white/5 rounded-2xl px-4 py-2 text-sm min-w-0 max-w-full">
+                <p className="font-bold text-white">{c.author_name}</p>
+                <p className="text-gray-300 mt-0.5 break-words">{c.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-3 mt-1">
+        <input
+          className="flex-1 bg-transparent border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-[--primary-theme]"
+          type="text"
+          placeholder="Write a reply..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+        />
+        <button
+          className="bg-[--primary-theme] text-white font-bold text-sm px-5 py-2 rounded-full transition-colors hover:opacity-90 disabled:opacity-50"
+          onClick={handleAddComment}
+          disabled={posting || !text.trim()}
+        >
+          {posting ? "..." : "Reply"}
+        </button>
+      </div>
     </div>
   );
 }
