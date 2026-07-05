@@ -129,6 +129,7 @@ function OtherUserProfile() {
   };
 
   const handleUnfollow = async () => {
+    if (!window.confirm(`Unfollow ${profile?.first_name} ${profile?.last_name}?`)) return;
     setFollowLoading(true);
 
     try {

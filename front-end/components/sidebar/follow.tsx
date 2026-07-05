@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ButtonData } from "@/types";
 import { Button } from "../ui/button";
-import Image from "next/image";
+import UserProfileImage from "../header/profile/userProfile";
 import style from "@/styles/follow.module.css";
 import { btnFollowStyle } from "@/styles/style";
 import { Api } from "@/services/axios";
@@ -41,6 +41,7 @@ export function Follow() {
   }, []);
 
   const handleUnfollow = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to unfollow this user?")) return;
     try {
       await Api.delete(`/follow/${userId}`);
       setFollowing((prev) => prev.filter((u) => u.user_id !== userId));
@@ -94,18 +95,15 @@ export function FollowUserUI({ user, onUnfollow }: FollowUserUIProps) {
     ? user.avatar.startsWith("http")
       ? user.avatar
       : `http://localhost:8080/${user.avatar}`
-    : "/maodongo.jpeg";
+    : undefined;
 
   return (
     <div className={style.userSFollowCont}>
       <div className={style.displayFollowProf}>
-        <div className={style.followImage}>
-          <Image
-            src={avatarUrl}
-            priority
-            fill
-            sizes="48px"
-            alt={`${user.first_name} ${user.last_name} profile image`}
+        <div style={{ display: "flex", flexShrink: 0, marginTop: "2px" }}>
+          <UserProfileImage
+            url={avatarUrl}
+            name={`${user.first_name} ${user.last_name}`}
           />
         </div>
         <div>

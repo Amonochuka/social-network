@@ -11,7 +11,7 @@ import UserProfileImage from "@/components/header/profile/userProfile";
 import {
   Users, Calendar, MessageSquare, FileText,
   Send, Plus, X, Check, XCircle,
-  UserPlus, Clock, Heart,
+  UserPlus, Clock, Heart, Image as ImageIcon,
 } from "lucide-react";
 
 interface GroupDetail {
@@ -647,6 +647,9 @@ function GroupCommentSection({ postId }: { postId: string }) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Api.get<GroupCommentDetail[]>(`/group-posts/${postId}/comments`)
@@ -655,12 +658,27 @@ function GroupCommentSection({ postId }: { postId: string }) {
       .finally(() => setLoading(false));
   }, [postId]);
 
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMediaFile(file);
+    setMediaPreview(URL.createObjectURL(file));
+  };
+
+  const removeMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleAddComment = async () => {
-    if (!text.trim() || posting) return;
+    if (!text.trim() && !mediaFile) return;
+    if (posting) return;
     setPosting(true);
     try {
       const formData = new FormData();
       formData.append("content", text);
+      if (mediaFile) formData.append("media", mediaFile);
       const res = await Api.post<GroupCommentDetail>(
         `/group-posts/${postId}/comments`,
         formData,
@@ -668,6 +686,9 @@ function GroupCommentSection({ postId }: { postId: string }) {
       );
       setComments((prev) => [...prev, res.data]);
       setText("");
+      setMediaFile(null);
+      setMediaPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       console.error("Failed to add comment:", err);
     } finally {
@@ -699,13 +720,48 @@ function GroupCommentSection({ postId }: { postId: string }) {
               </div>
               <div className="bg-white/5 rounded-2xl px-4 py-2 text-sm min-w-0 max-w-full">
                 <p className="font-bold text-white">{c.author_name}</p>
-                <p className="text-gray-300 mt-0.5 break-words">{c.content}</p>
+                {c.content && <p className="text-gray-300 mt-0.5 break-words">{c.content}</p>}
+                {c.media_path && (
+                  <img
+                    src={c.media_path.startsWith("http") ? c.media_path : `http://localhost:8080/${c.media_path}`}
+                    alt="comment media"
+                    className="mt-2 max-h-48 rounded-xl object-cover border border-white/10"
+                  />
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Media preview */}
+      {mediaPreview && (
+        <div className="relative w-fit">
+          <img src={mediaPreview} alt="preview" className="max-h-32 rounded-xl object-cover border border-white/10" />
+          <button
+            onClick={removeMedia}
+            className="absolute -top-2 -right-2 bg-black/80 rounded-full p-0.5 hover:bg-black transition-colors"
+          >
+            <X size={14} className="text-white" />
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mt-1">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif"
+          className="hidden"
+          onChange={handleMediaSelect}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="p-2 rounded-full hover:bg-[--primary-theme]/10 text-[--primary-theme] transition-colors shrink-0"
+          title="Attach image"
+        >
+          <ImageIcon size={17} />
+        </button>
         <input
           className="flex-1 bg-transparent border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-[--primary-theme]"
           type="text"
@@ -717,7 +773,7 @@ function GroupCommentSection({ postId }: { postId: string }) {
         <button
           className="bg-[--primary-theme] text-white font-bold text-sm px-5 py-2 rounded-full transition-colors hover:opacity-90 disabled:opacity-50"
           onClick={handleAddComment}
-          disabled={posting || !text.trim()}
+          disabled={posting || (!text.trim() && !mediaFile)}
         >
           {posting ? "..." : "Reply"}
         </button>

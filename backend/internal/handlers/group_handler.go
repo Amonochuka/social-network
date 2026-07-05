@@ -438,7 +438,48 @@ func (h *GroupHandler) CreateGroupComment(w http.ResponseWriter, r *http.Request
 		return
 	}
 	content := r.FormValue("content")
-	comment, err := h.groupService.CreateGroupComment(postID, userID, content, "", "")
+	mediaPath := ""
+	mediaType := ""
+	file, header, err := r.FormFile("media")
+	if err == nil {
+		defer file.Close()
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		allowedExts := map[string]string{
+			".jpg":  "image/jpeg",
+			".jpeg": "image/jpeg",
+			".png":  "image/png",
+			".gif":  "image/gif",
+		}
+		mime, ok := allowedExts[ext]
+		if !ok {
+			http.Error(w, "unsupported file type", http.StatusBadRequest)
+			return
+		}
+		mediaType = mime
+		filename := userID + "_" + header.Filename
+		mediaPath = "uploads/comments/" + filename
+		if err := os.MkdirAll("uploads/comments", 0755); err != nil {
+			http.Error(w, "could not create upload directory", http.StatusInternalServerError)
+			return
+		}
+		dst, err := os.Create(mediaPath)
+		if err != nil {
+			http.Error(w, "could not save file", http.StatusInternalServerError)
+			return
+		}
+		defer dst.Close()
+		buf := make([]byte, 32*1024)
+		for {
+			n, readErr := file.Read(buf)
+			if n > 0 {
+				dst.Write(buf[:n])
+			}
+			if readErr != nil {
+				break
+			}
+		}
+	}
+	comment, err := h.groupService.CreateGroupComment(postID, userID, content, mediaPath, mediaType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

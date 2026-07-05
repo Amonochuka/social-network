@@ -68,6 +68,7 @@ export function Followers() {
   }, []);
 
   const handleUnfollow = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to unfollow this user?")) return;
     setActionLoading(userId);
     try {
       await Api.delete(`/follow/${userId}`);
