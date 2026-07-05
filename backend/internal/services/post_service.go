@@ -178,7 +178,7 @@ func (s *PostService) CreateComment(postID, userID, content, mediaPath, mediaTyp
 	if content == "" && mediaPath == "" {
 		return nil, errors.New("comment must have content or media")
 	}
-	_, err := s.postRepo.GetPostByID(postID)
+	post, err := s.postRepo.GetPostByID(postID)
 	if err != nil {
 		return nil, errors.New("post not found")
 	}
@@ -194,6 +194,21 @@ func (s *PostService) CreateComment(postID, userID, content, mediaPath, mediaTyp
 	if err := s.postRepo.CreateComment(comment); err != nil {
 		return nil, errors.New("could not create comment")
 	}
+
+	// Send notification to post owner if they aren't the one commenting
+	if post.UserID != userID {
+		notification := &models.Notification{
+			ID:          uuid.New().String(),
+			UserID:      post.UserID,
+			ActorID:     userID,
+			Type:        "post_commented",
+			ReferenceID: postID,
+			IsRead:      false,
+			CreatedAt:   time.Now(),
+		}
+		_ = s.notificationRepo.CreateNotification(notification)
+	}
+
 	return comment, nil
 }
 
