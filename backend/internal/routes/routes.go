@@ -130,7 +130,7 @@ func Register(
 		}
 	})))
 
-	mux.Handle("/api/groups/posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/api/group-posts/{post_id}/comments", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			groupHandler.CreateGroupComment(w, r)
 		} else {
@@ -138,8 +138,8 @@ func Register(
 		}
 	})))
 
-	mux.Handle("/api/groups/posts/{post_id}/like", auth.Authenticate(http.HandlerFunc(groupHandler.ToggleGroupPostLike)))
-	mux.Handle("/api/groups/posts/{post_id}", auth.Authenticate(http.HandlerFunc(groupHandler.DeleteGroupPost)))
+	mux.Handle("/api/group-posts/{post_id}/like", auth.Authenticate(http.HandlerFunc(groupHandler.ToggleGroupPostLike)))
+	mux.Handle("/api/group-posts/{post_id}", auth.Authenticate(http.HandlerFunc(groupHandler.DeleteGroupPost)))
 
 	mux.Handle("/api/groups/{group_id}/chat", auth.Authenticate(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {

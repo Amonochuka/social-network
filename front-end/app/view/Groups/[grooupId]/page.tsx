@@ -535,7 +535,7 @@ function GroupPostCard({
     setLiking(true);
     try {
       const res = await Api.post<{ liked: boolean; like_count: number }>(
-        `/groups/posts/${post.id}/like`
+        `/group-posts/${post.id}/like`
       );
       setLiked(res.data.liked);
       setLikeCount(res.data.like_count);
@@ -551,7 +551,7 @@ function GroupPostCard({
     if (!confirm("Delete this post?")) return;
     setDeleting(true);
     try {
-      await Api.delete(`/groups/posts/${post.id}`);
+      await Api.delete(`/group-posts/${post.id}`);
       onDeleted(post.id);
     } catch (err) {
       console.error("Failed to delete post:", err);
@@ -645,7 +645,7 @@ function GroupCommentSection({ postId }: { postId: string }) {
   const [posting, setPosting] = useState(false);
 
   useEffect(() => {
-    Api.get<GroupCommentDetail[]>(`/groups/posts/${postId}/comments`)
+    Api.get<GroupCommentDetail[]>(`/group-posts/${postId}/comments`)
       .then((res) => setComments(res.data ?? []))
       .catch(() => setComments([]))
       .finally(() => setLoading(false));
@@ -658,7 +658,7 @@ function GroupCommentSection({ postId }: { postId: string }) {
       const formData = new FormData();
       formData.append("content", text);
       const res = await Api.post<GroupCommentDetail>(
-        `/groups/posts/${postId}/comments`,
+        `/group-posts/${postId}/comments`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
