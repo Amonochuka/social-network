@@ -16,6 +16,7 @@ import { authSelector, setSession } from "@/store/features/authSlice";
 import { Api } from "@/services/axios";
 import Image from "next/image";
 import Link from "next/link";
+import { PostInteractions } from "@/components/allPosts/interactions";
 
 interface FeedPost {
   id: string;
@@ -28,6 +29,7 @@ interface FeedPost {
   privacy: string;
   comment_count: number;
   like_count: number;
+  liked_by_me: boolean;
   created_at: string;
 }
 
@@ -246,11 +248,14 @@ export default function ProfilePage() {
 />
                   </div>
                 )}
-                <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-  <span>{new Date(post.created_at).toLocaleDateString()}</span>
-  <span>{post.comment_count} comments</span>
-  <span>{post.like_count} likes</span>
-  <span className="capitalize">{post.privacy}</span>
+          <div className="mt-3">
+  <PostInteractions
+    postId={post.id}
+    comments={post.comment_count}
+    likes={post.like_count}
+    likedByMe={post.liked_by_me}
+    postDetails={post}
+  />
 </div>
               </div>
             ))}
