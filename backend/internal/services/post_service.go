@@ -174,7 +174,7 @@ func (s *PostService) DeletePost(postID, userID string) error {
 	return nil
 }
 
-func (s *PostService) CreateComment(postID, userID, content, mediaPath, mediaType string) (*models.Comment, error) {
+func (s *PostService) CreateComment(postID, userID, content, mediaPath, mediaType string) (*models.CommentDetail, error) {
 	if content == "" && mediaPath == "" {
 		return nil, errors.New("comment must have content or media")
 	}
@@ -209,7 +209,25 @@ func (s *PostService) CreateComment(postID, userID, content, mediaPath, mediaTyp
 		_ = s.notificationRepo.CreateNotification(notification)
 	}
 
-	return comment, nil
+	// Fetch user details to return CommentDetail
+	user, err := s.userRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found for comment")
+	}
+
+	commentDetail := &models.CommentDetail{
+		ID:           comment.ID,
+		PostID:       comment.PostID,
+		UserID:       comment.UserID,
+		AuthorName:   user.FirstName + " " + user.LastName,
+		AuthorAvatar: user.Avatar,
+		Content:      comment.Content,
+		MediaPath:    comment.MediaPath,
+		MediaType:    comment.MediaType,
+		CreatedAt:    comment.CreatedAt,
+	}
+
+	return commentDetail, nil
 }
 
 func (s *PostService) GetCommentsByPostID(postID string) ([]*models.CommentDetail, error) {
