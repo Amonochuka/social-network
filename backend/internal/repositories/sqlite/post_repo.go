@@ -83,39 +83,103 @@ func (r *postRepository) UpdatePost(post *models.Post) error {
 	return err
 
 }
-func (r *postRepository) GetPostsByUserID(userID, viewerID string) ([]*models.Post, error) {
+
+func (r *postRepository) GetPostsByUserID(userID, viewerID string) ([]*models.FeedPost, error) {
 	rows, err := r.db.Query(`
-		SELECT id, user_id, content, media_path, media_type, privacy, created_at, updated_at
-		FROM posts
-		WHERE user_id = ?
+		SELECT
+			p.id,
+			p.user_id,
+			u.first_name || ' ' || u.last_name AS author_name,
+			u.avatar,
+			p.content,
+			p.media_path,
+			p.media_type,
+			p.privacy,
+			COALESCE((
+				SELECT COUNT(*)
+				FROM comments c
+				WHERE c.post_id = p.id
+			), 0) AS comment_count,
+			COALESCE((
+				SELECT COUNT(*)
+				FROM post_likes l
+				WHERE l.post_id = p.id
+			), 0) AS like_count,
+			EXISTS(
+				SELECT 1
+				FROM post_likes l
+				WHERE l.post_id = p.id
+				AND l.user_id = ?
+			) AS liked_by_me,
+			p.created_at,
+			p.updated_at
+		FROM posts p
+		JOIN users u
+			ON u.id = p.user_id
+		WHERE p.user_id = ?
 		AND (
-			user_id = ?
-			OR privacy = 'public'
-			OR (privacy = 'followers' AND EXISTS (
-				SELECT 1 FROM followers
-				WHERE follower_id = ? AND following_id = ?
-			))
-			OR (privacy = 'selected' AND EXISTS (
-				SELECT 1 FROM post_allowed_users
-				WHERE post_id = posts.id AND user_id = ?
-			))
+			p.user_id = ?
+			OR p.privacy = 'public'
+			OR (
+				p.privacy = 'followers'
+				AND EXISTS (
+					SELECT 1
+					FROM followers
+					WHERE follower_id = ?
+					AND following_id = ?
+				)
+			)
+			OR (
+				p.privacy = 'selected'
+				AND EXISTS (
+					SELECT 1
+					FROM post_allowed_users
+					WHERE post_id = p.id
+					AND user_id = ?
+				)
+			)
 		)
-		ORDER BY created_at DESC
-	`, userID, viewerID, viewerID, userID, viewerID)
+		ORDER BY p.created_at DESC
+	`,
+		viewerID,
+		userID,
+		viewerID,
+		viewerID,
+		userID,
+		viewerID,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var posts []*models.Post
+	var posts []*models.FeedPost
+
 	for rows.Next() {
-		var p models.Post
-		err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.MediaPath, &p.MediaType, &p.Privacy, &p.CreatedAt, &p.UpdatedAt)
+		var p models.FeedPost
+
+		err := rows.Scan(
+			&p.ID,
+			&p.UserID,
+			&p.AuthorName,
+			&p.AuthorAvatar,
+			&p.Content,
+			&p.MediaPath,
+			&p.MediaType,
+			&p.Privacy,
+			&p.CommentCount,
+			&p.LikeCount,
+			&p.LikedByMe,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+		)
 		if err != nil {
 			return nil, err
 		}
+
 		posts = append(posts, &p)
 	}
+
 	return posts, nil
 }
 

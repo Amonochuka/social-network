@@ -37,6 +37,9 @@ type Post struct {
 	MediaPath string    `json:"media_path"`
 	MediaType string    `json:"media_type"`
 	Privacy   string    `json:"privacy"`
+	CommentCount int  `json:"comment_count"`
+	LikeCount    int  `json:"like_count"`
+	LikedByMe    bool `json:"liked_by_me"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -73,15 +76,15 @@ type Comment struct {
 }
 
 type CommentDetail struct {
-	ID          string    `json:"id"`
-	PostID      string    `json:"post_id"`
-	UserID      string    `json:"user_id"`
-	AuthorName  string    `json:"author_name"`
-	AuthorAvatar string   `json:"author_avatar"`
-	Content     string    `json:"content"`
-	MediaPath   string    `json:"media_path"`
-	MediaType   string    `json:"media_type"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           string    `json:"id"`
+	PostID       string    `json:"post_id"`
+	UserID       string    `json:"user_id"`
+	AuthorName   string    `json:"author_name"`
+	AuthorAvatar string    `json:"author_avatar"`
+	Content      string    `json:"content"`
+	MediaPath    string    `json:"media_path"`
+	MediaType    string    `json:"media_type"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type Notification struct {
@@ -107,5 +110,5 @@ type NotificationDetail struct {
 }
 
 type FollowStatus struct {
-    Status string `json:"status"`
+	Status string `json:"status"`
 }

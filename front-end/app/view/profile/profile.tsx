@@ -27,6 +27,7 @@ interface FeedPost {
   media_type: string;
   privacy: string;
   comment_count: number;
+  like_count: number;
   created_at: string;
 }
 
@@ -60,15 +61,18 @@ export default function ProfilePage() {
     if (!user) return;
 
     const fetchStats = async () => {
-      try {
-        await Promise.all([
-          dispatch(getFollowers()).unwrap(),
-          dispatch(getFollowing()).unwrap(),
-        ]);
+  try {
+    await Promise.all([
+      dispatch(getFollowers()).unwrap(),
+      dispatch(getFollowing()).unwrap(),
+    ]);
 
-        const postsRes = await Api.get<FeedPost[]>(`/users/${user.id}/posts`);
-        setPosts(postsRes.data ?? []);
-      } catch (err) {
+    const postsRes = await Api.get<FeedPost[]>(`/users/${user.id}/posts`);
+
+    console.log("POSTS:", postsRes.data);
+
+    setPosts(postsRes.data ?? []);
+  } catch (err) {
         console.error("Failed to load profile stats:", err);
       } finally {
         setStatsLoading(false);
@@ -178,17 +182,21 @@ export default function ProfilePage() {
         </div>
 
         <div className="flex items-baseline gap-2.5">
-          <h1 className="text-2xl font-bold text-white">
-            {user.first_name} {user.last_name}
-          </h1>
-          {user.nickname && (
-            <span className="text-sm text-gray-500">@{user.nickname}</span>
-          )}
-        </div>
+  <h1 className="text-2xl font-bold text-white">
+    {user.first_name} {user.last_name}
+  </h1>
+  {user.nickname && (
+    <span className="text-sm text-gray-500">@{user.nickname}</span>
+  )}
+</div>
 
-        <p className="mt-2 text-sm leading-relaxed text-gray-400">
-          {user.about_me || "No bio yet."}
-        </p>
+<p className="mt-1 text-sm text-gray-500">
+  {user.email}
+</p>
+
+<p className="mt-2 text-sm leading-relaxed text-gray-400">
+  {user.about_me || "No bio yet."}
+</p>
 
         {user.date_of_birth && user.date_of_birth !== "" && (
           <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
@@ -231,20 +239,19 @@ export default function ProfilePage() {
                 <p className="text-sm text-gray-300 leading-relaxed">{post.content}</p>
                 {post.media_path && (
                   <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden">
-                    <Image
-                      src={`http://localhost:8080/${post.media_path}`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      style={{ objectFit: "cover" }}
-                      alt="post media"
-                    />
+                  <img
+  src={`http://localhost:8080/${post.media_path}`}
+  alt="post media"
+  className="h-full w-full object-cover"
+/>
                   </div>
                 )}
                 <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-                  <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                  <span>{post.comment_count} comments</span>
-                  <span className="capitalize">{post.privacy}</span>
-                </div>
+  <span>{new Date(post.created_at).toLocaleDateString()}</span>
+  <span>{post.comment_count} comments</span>
+  <span>{post.like_count} likes</span>
+  <span className="capitalize">{post.privacy}</span>
+</div>
               </div>
             ))}
           </div>

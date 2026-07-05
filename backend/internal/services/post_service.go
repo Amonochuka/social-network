@@ -64,7 +64,7 @@ func (s *PostService) CreatePost(userID, content, mediaPath, mediaType, privacy 
 	return post, nil
 }
 
-func (s *PostService) GetPostsByUserID(userID, viewerID string) ([]*models.Post, error) {
+func (s *PostService) GetPostsByUserID(userID, viewerID string) ([]*models.FeedPost, error) {
 	owner, err := s.userRepo.GetUserByID(userID)
 	if err != nil {
 		return nil, errors.New("user not found")
@@ -86,9 +86,9 @@ func (s *PostService) GetPostsByUserID(userID, viewerID string) ([]*models.Post,
 		return nil, errors.New("could not check follow status")
 	}
 
-	// Not following -> profile exists but no posts
+	// Not following
 	if !following {
-		return []*models.Post{}, nil
+		return []*models.FeedPost{}, nil
 	}
 
 	return s.postRepo.GetPostsByUserID(userID, viewerID)
