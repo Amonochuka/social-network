@@ -282,7 +282,7 @@ function GroupDetailContent() {
             {!group.is_member && !group.request_status && !group.invite_status && (
               <button
                 onClick={handleJoinRequest}
-                className="flex items-center gap-2 rounded-xl bg-[--primary-theme] px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90"
+                className="flex items-center gap-2 rounded-xl bg-[--primary-theme] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 <Plus size={16} />
                 Request to Join

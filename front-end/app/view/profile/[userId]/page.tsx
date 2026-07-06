@@ -199,7 +199,7 @@ function OtherUserProfile() {
             <button
               onClick={followStatus === "following"? handleUnfollow: handleFollow}
               disabled={followLoading || followStatus === "requested"}
-             className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
+             className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-white font-semibold transition ${
   followStatus === "following"
     ? "border border-white/15 bg-transparent text-gray-300 hover:bg-white/5 hover:text-red-400"
     : followStatus === "requested"

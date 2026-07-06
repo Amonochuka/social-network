@@ -1,8 +1,10 @@
 .imageCont {
     position: relative;
-    padding: 1.6rem;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .userImage {
