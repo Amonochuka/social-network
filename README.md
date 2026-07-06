@@ -4,7 +4,7 @@ A modern, responsive, and fully-featured social media platform built with a high
 
 ---
 
-## 🚀 Features
+##  Features
 
 ### 1. Authentication & Session Management
 - **Security:** Standard email/password registration and login with encrypted credentials.
@@ -51,7 +51,7 @@ A modern, responsive, and fully-featured social media platform built with a high
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Backend:** Go (Golang) 1.25, SQLite3 (CGO_ENABLED=1), Go Migrate.
 - **Frontend:** Next.js 16 (React 19), Redux Toolkit, Tailwind CSS, Lucide React.
@@ -59,7 +59,7 @@ A modern, responsive, and fully-featured social media platform built with a high
 
 ---
 
-## 📦 How to Run
+##  How to Run
 
 ### Option A: Using Docker (Recommended)
 Make sure you have Docker and Docker Compose installed, then run the helper script:
