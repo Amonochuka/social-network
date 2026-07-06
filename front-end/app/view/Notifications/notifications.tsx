@@ -176,21 +176,23 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
 
   return (
     <div className="mx-auto max-w-2xl px-4">
-      <div className="divide-y divide-[#1f1f1f]">
+      <div className="mt-4 flex flex-col">
         {items.map((n) => (
           <div
             key={n.id}
-            className="flex items-start gap-4 py-5 transition-colors hover:bg-white/[0.02]"
+            className={`mb-3 flex items-start gap-4 rounded-2xl border border-white/5 px-5 py-5 transition-all duration-200 hover:border-white/10 hover:bg-[#181818] ${
+  !n.is_read ? "bg-[#151515]" : "bg-[#111111]"
+}`}
           >
             <Avatar name={n.actor_name} size="md" />
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm leading-relaxed text-white">
-                <span className="font-semibold">{n.actor_name}</span>{" "}
+              <p className="text-[15px] leading-6 text-white">
+                <span className="font-bold">{n.actor_name}</span>{" "}
                 <span className="text-gray-400">{actionText(n.type)}</span>
               </p>
 
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs font-medium text-gray-500">
                 {timeAgo(n.created_at)}
               </p>
             </div>
@@ -202,7 +204,7 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
                   <span
                     className={`text-sm font-semibold ${
                       handled[n.id] === "accepted"
-                        ? "text-[#14afa7]"
+                        ? "text-[--primary-theme] font-bold"
                         : "text-red-500"
                     }`}
                   >
@@ -212,15 +214,15 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAccept(n)}
-                      className="rounded-lg bg-[#14afa7] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
-                    >
+
+                      className="rounded-full bg-[--primary-theme] px-5 py-2 text-sm font-bold text-white transition hover:brightness-110">
                       Accept
                     </button>
 
                     <button
                       onClick={() => handleDecline(n)}
-                      className="rounded-lg border border-[#3a3a3a] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#242424]"
-                    >
+                      className="rounded-full border border-white/20 px-5 py-2 text-sm font-bold text-white transition hover:bg-white/10"
+>
                       Decline
                     </button>
                   </div>
@@ -234,7 +236,7 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
               ].includes(n.type) && !n.is_read && (
               <button
               onClick={() => markAsRead(n.id)}
-              className="rounded-lg bg-[#262626] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#333]"
+              className="rounded-full border border-white/10 bg-[#1a1a1a] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#222]"
                   >
               Mark read
               </button> 
@@ -257,15 +259,15 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
         <div className="flex gap-2">
             <button
                 onClick={() => handleGroupInviteAccept(n)}
-                className="rounded-lg bg-[#14afa7] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
-            >
+                className="rounded-full bg-[--primary-theme] px-5 py-2 text-sm font-bold text-white transition hover:brightness-110"
+>
                 Accept
             </button>
 
             <button
                 onClick={() => handleGroupInviteDecline(n)}
-                className="rounded-lg border border-[#3a3a3a] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#242424]"
-            >
+                className="rounded-full border border-white/20 px-5 py-2 text-sm font-bold text-white transition hover:bg-white/10"
+>
                 Decline
             </button>
         </div>
@@ -278,7 +280,7 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
         <span
             className={`text-sm font-semibold ${
                 handled[n.id] === "accepted"
-                    ? "text-[#14afa7]"
+                    ? "text-[--primary-theme] font-bold"
                     : "text-red-500"
             }`}
         >
@@ -290,19 +292,19 @@ const handleJoinRequestDecline = async (n: NotificationDetail) => {
         <div className="flex gap-2">
             <button
                 onClick={() => handleJoinRequestAccept(n)}
-                className="rounded-lg bg-[#14afa7] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
-            >
+              className="rounded-full bg-[--primary-theme] px-5 py-2 text-sm font-bold text-white transition hover:brightness-110"
+              >
                 Accept
             </button>
 
             <button
                 onClick={() => handleJoinRequestDecline(n)}
-                className="rounded-lg border border-[#3a3a3a] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#242424]"
-            >
+                className="rounded-full border border-white/20 px-5 py-2 text-sm font-bold text-white transition hover:bg-white/10"
+              >
                 Decline
             </button>
         </div>
-    )
+        )
 )}
             </div>
           </div>
