@@ -337,7 +337,21 @@ export function UserPostContent({
   currentUserId,
   onDeleted,
 }: {
-  post: FeedPost;
+  post:
+    | FeedPost
+    | {
+        id: string;
+        user_id: string;
+        author_name: string;
+        author_avatar: string;
+        content: string;
+        media_path: string;
+        media_type: string;
+        comment_count: number;
+        like_count: number;
+        liked_by_me: boolean;
+        created_at: string;
+      };
   currentUserId?: string;
   onDeleted?: (id: string) => void;
 }) {

@@ -8,10 +8,21 @@ import { authSelector } from "@/store/features/authSlice";
 import { useSocketContext } from "@/contexts/SocketContext";
 import DefaultLayout from "@/components/layouts/defaultLayout";
 import UserProfileImage from "@/components/header/profile/userProfile";
+import { UserPostContent } from "@/components/allPosts/allPosts";
 import {
-  Users, Calendar, MessageSquare, FileText,
-  Send, Plus, X, Check, XCircle,
-  UserPlus, Clock, Heart, Image as ImageIcon,
+  Users,
+  Calendar,
+  MessageSquare,
+  FileText,
+  Send,
+  Plus,
+  X,
+  Check,
+  XCircle,
+  UserPlus,
+  Clock,
+  Heart,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface GroupDetail {
@@ -347,17 +358,26 @@ function GroupDetailContent() {
               </div>
 
               {posts.length === 0 ? (
-                <div className="text-center text-sm text-gray-500 py-8">No posts yet. Be the first to post!</div>
-              ) : (
-                posts.map((post) => (
-                  <GroupPostCard
-                    key={post.id}
-                    post={post}
-                    currentUserId={user?.id ?? ""}
-                    onDeleted={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
-                  />
-                ))
-              )}
+  <div className="p-8 text-center border-b border-white/10">
+    <h2 className="text-xl font-extrabold mb-2 text-white">
+      No group posts yet
+    </h2>
+    <p className="text-gray-500 text-sm">
+      Be the first member to start the conversation.
+    </p>
+  </div>
+) : (
+  <div className="border-t border-white/10">
+    {posts.map((post) => (
+      <GroupPostCard
+        key={post.id}
+        post={post}
+        currentUserId={user?.id ?? ""}
+        onDeleted={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+      />
+    ))}
+  </div>
+)}
             </div>
           )}
 
@@ -532,15 +552,19 @@ function GroupPostCard({
 
   const handleLike = async () => {
     if (liking) return;
+
     const prevLiked = liked;
     const prevCount = likeCount;
+
     setLiked(!liked);
     setLikeCount(liked ? likeCount - 1 : likeCount + 1);
     setLiking(true);
+
     try {
       const res = await Api.post<{ liked: boolean; like_count: number }>(
         `/group-posts/${post.id}/like`
       );
+
       setLiked(res.data.liked);
       setLikeCount(res.data.like_count);
     } catch {
@@ -553,7 +577,9 @@ function GroupPostCard({
 
   const handleDelete = async () => {
     if (!confirm("Delete this post?")) return;
+
     setDeleting(true);
+
     try {
       await Api.delete(`/group-posts/${post.id}`);
       onDeleted(post.id);
@@ -565,8 +591,10 @@ function GroupPostCard({
   };
 
   return (
-    <div className="rounded-xl bg-[#222] p-5 border border-white/5">
-      <div className="flex items-center gap-3 mb-3">
+    <article className="flex gap-3 p-4 border-b border-white/10 hover:bg-white/[0.02] transition-colors">
+
+      {/* Avatar */}
+      <div className="shrink-0">
         <UserProfileImage
           url={
             post.author_avatar
@@ -577,56 +605,98 @@ function GroupPostCard({
           }
           name={post.author_name}
         />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-white">{post.author_name}</p>
-          <p className="text-xs text-gray-500">{new Date(post.created_at).toLocaleDateString()}</p>
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-col flex-1 min-w-0">
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-sm font-semibold text-white">
+              {post.author_name}
+            </p>
+            <p className="text-xs text-gray-500">
+              {new Date(post.created_at).toLocaleDateString()}
+            </p>
+          </div>
+
+          {post.user_id === currentUserId && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-red-400/10"
+            >
+              {deleting ? "..." : "Delete"}
+            </button>
+          )}
         </div>
-        {post.user_id === currentUserId && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-red-400/10"
-          >
-            {deleting ? "..." : "Delete"}
-          </button>
+
+        {/* Content */}
+        <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
+          {post.content}
+        </p>
+
+        {/* Image */}
+        {post.media_path && (
+          <div className="mt-3 overflow-hidden rounded-2xl border border-white/10">
+            <img
+              src={
+                post.media_path.startsWith("http")
+                  ? post.media_path
+                  : `http://localhost:8080/${post.media_path}`
+              }
+              alt="Post"
+              className="w-full max-h-[500px] object-cover"
+            />
+          </div>
         )}
+
+        {/* Interactions */}
+        <div className="flex items-center gap-8 mt-4 pt-3 border-t border-white/5">
+          <button
+            onClick={handleLike}
+            disabled={liking}
+            className="group flex items-center gap-1.5 transition-colors"
+          >
+            <Heart
+              size={17}
+              fill={liked ? "currentColor" : "none"}
+              className={
+                liked
+                  ? "text-pink-500"
+                  : "text-gray-500 group-hover:text-pink-500 transition-colors"
+              }
+            />
+            <span
+              className={`text-sm font-medium transition-colors ${
+                liked
+                  ? "text-pink-500"
+                  : "text-gray-500 group-hover:text-pink-500"
+              }`}
+            >
+              {likeCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setShowComments((p) => !p)}
+            className="group flex items-center gap-1.5 transition-colors"
+          >
+            <MessageSquare
+              size={17}
+              className="text-gray-500 group-hover:text-sky-400 transition-colors"
+            />
+            <span className="text-sm font-medium text-gray-500 group-hover:text-sky-400 transition-colors">
+              {post.comment_count}
+            </span>
+          </button>
+        </div>
+
+        {showComments && <GroupCommentSection postId={post.id} />}
+
       </div>
-
-      <p className="text-sm text-gray-300 leading-relaxed">{post.content}</p>
-
-      {/* Interactions */}
-      <div className="flex items-center gap-8 mt-4 pt-3 border-t border-white/5">
-        <button
-          onClick={handleLike}
-          disabled={liking}
-          className="group flex items-center gap-1.5 transition-colors"
-        >
-          <Heart
-            size={17}
-            fill={liked ? "currentColor" : "none"}
-            className={liked ? "text-pink-500" : "text-gray-500 group-hover:text-pink-500 transition-colors"}
-          />
-          <span className={`text-sm font-medium transition-colors ${liked ? "text-pink-500" : "text-gray-500 group-hover:text-pink-500"}`}>
-            {likeCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setShowComments((p) => !p)}
-          className="group flex items-center gap-1.5 transition-colors"
-        >
-          <MessageSquare
-            size={17}
-            className="text-gray-500 group-hover:text-sky-400 transition-colors"
-          />
-          <span className="text-sm font-medium text-gray-500 group-hover:text-sky-400 transition-colors">
-            {post.comment_count}
-          </span>
-        </button>
-      </div>
-
-      {showComments && <GroupCommentSection postId={post.id} />}
-    </div>
+    </article>
   );
 }
 

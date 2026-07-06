@@ -14,7 +14,7 @@ interface Props {
     id: string;
     author_name: string;
     author_avatar?: string;
-    privacy: string;
+    privacy?: string;      
     created_at: string;
     content: string;
     media_path?: string;
@@ -25,11 +25,37 @@ interface Props {
 export function PostInteractions({ likes, likedByMe = false, comments, postId, postDetails }: Props) {
   const [showComments, setShowComments] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  // Like state
+const [liked, setLiked] = useState(likedByMe);
+const [likeCount, setLikeCount] = useState(likes);
+const [liking, setLiking] = useState(false);
 
-  // Like state — initialised from props, updated optimistically
-  const [liked, setLiked] = useState(likedByMe);
-  const [likeCount, setLikeCount] = useState(likes);
-  const [liking, setLiking] = useState(false);
+const handleLike = async () => {
+  if (liking) return;
+
+  const prevLiked = liked;
+  const prevCount = likeCount;
+
+  setLiked(!liked);
+  setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+  setLiking(true);
+
+  try {
+    const res = await Api.post<{
+      liked: boolean;
+      like_count: number;
+    }>(`/posts/${postId}/like`);
+
+    setLiked(res.data.liked);
+    setLikeCount(res.data.like_count);
+  } catch (err) {
+    setLiked(prevLiked);
+    setLikeCount(prevCount);
+    console.error("Failed to toggle like:", err);
+  } finally {
+    setLiking(false);
+  }
+};
 
   // Keep in sync if the parent re-renders with fresh data
   useEffect(() => {
@@ -46,30 +72,6 @@ export function PostInteractions({ likes, likedByMe = false, comments, postId, p
     }
   }, [postId]);
 
-  const handleLike = async () => {
-    if (liking) return;
-    // Optimistic update
-    const prevLiked = liked;
-    const prevCount = likeCount;
-    setLiked(!liked);
-    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
-    setLiking(true);
-    try {
-      const res = await Api.post<{ liked: boolean; like_count: number }>(
-        `/posts/${postId}/like`
-      );
-      // Sync with server truth
-      setLiked(res.data.liked);
-      setLikeCount(res.data.like_count);
-    } catch (err) {
-      // Rollback on failure
-      setLiked(prevLiked);
-      setLikeCount(prevCount);
-      console.error("Failed to toggle like:", err);
-    } finally {
-      setLiking(false);
-    }
-  };
 
   const handleBookmark = () => {
     try {
@@ -80,14 +82,10 @@ export function PostInteractions({ likes, likedByMe = false, comments, postId, p
         updated = bookmarks.filter((b: any) => b.id !== postId);
         setIsBookmarked(false);
       } else {
-        const itemToSave = postDetails || {
-          id: postId,
-          content: "",
-          author_name: "User",
-          created_at: new Date().toISOString(),
-          comment_count: comments,
-          privacy: "public"
-        };
+        const itemToSave = {
+  ...postDetails,
+  privacy: postDetails?.privacy ?? "public",
+};
         updated = [...bookmarks, itemToSave];
         setIsBookmarked(true);
       }
