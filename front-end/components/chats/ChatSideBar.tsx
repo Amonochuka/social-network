@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import UserProfileImage from "@/components/header/profile/userProfile";
-import { SearchUI } from "@/components/main/header";
+import { SearchUI, HomeNavElements } from "@/components/main/header";
 import { Logo } from "@/components/sidebar/sidebar";
 import { searchService, SearchUser } from "@/services/searchService";
 import { Api } from "@/services/axios";
 import { useSocketContext } from "@/contexts/SocketContext";
 import Link from "next/link";
+import { Home } from "lucide-react";
 
 interface ConversationPreview {
   user_id: string;
@@ -91,9 +92,22 @@ export default function ChatSideBar() {
   const displayList = search.trim() ? searchResults : conversations;
 
   return (
-    <aside className="w-[29%] min-w-90.5 py-2 px-6 h-screen flex flex-col gap-1 bg-[#222222]">
+    <aside className="w-[29%] min-w-90.5 py-2 px-6 h-screen flex flex-col gap-3 bg-[#222222]">
       <Logo />
 
+      {/* Top Navigation */}
+      <div className="flex items-center justify-center gap-8 border-b border-white/10 pb-3">
+        <Link href="/view/Home">
+          <Home
+            size={22}
+            className="cursor-pointer hover:text-[--primary-theme] transition-colors"
+          />
+        </Link>
+
+        <HomeNavElements />
+      </div>
+
+      {/* Search */}
       <div className="flex flex-col gap-2">
         <p className="font-bold py-1 text-2xl text-[#14afa7]">
           Chat Messages
@@ -108,6 +122,7 @@ export default function ChatSideBar() {
         />
       </div>
 
+      {/* Conversations */}
       <div className="mt-2.5 flex flex-col gap-3 flex-1 overflow-y-auto">
         {loading ? (
           <p className="text-sm text-gray-500 px-2 py-3">
