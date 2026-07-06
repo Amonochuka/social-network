@@ -24,9 +24,11 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /app
 
 COPY --from=builder /server .
-COPY --from=builder /app/backend/pkg/db/migrations ./backend/pkg/db/migrations
 
-# Create upload directory
+# Copy migrations to the path expected by sqlite.go
+COPY --from=builder /app/backend/pkg/db/migrations ./pkg/db/migrations
+
+# Create uploads directory
 RUN mkdir -p uploads/avatars
 
 EXPOSE 8080

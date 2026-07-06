@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import UserProfileImage from "@/components/header/profile/userProfile";
-import { SearchUI, HomeNavElements } from "@/components/main/header";
-import { Logo } from "@/components/sidebar/sidebar";
+import { SearchUI } from "@/components/main/header";
 import { searchService, SearchUser } from "@/services/searchService";
 import { Api } from "@/services/axios";
 import { useSocketContext } from "@/contexts/SocketContext";
 import Link from "next/link";
-import { Home } from "lucide-react";
 
 interface ConversationPreview {
   user_id: string;
@@ -92,38 +90,20 @@ export default function ChatSideBar() {
   const displayList = search.trim() ? searchResults : conversations;
 
   return (
-    <aside className="w-[29%] min-w-90.5 py-2 px-6 h-screen flex flex-col gap-3 bg-[#222222]">
-      <Logo />
+    <aside className="w-full h-screen bg-[#222222] flex flex-col px-5 pt-3 pb-5">
+      <h1 className="text-3xl font-bold text-[--primary-theme] mb-3">
+        Messages
+      </h1>
 
-      {/* Top Navigation */}
-      <div className="flex items-center justify-center gap-8 border-b border-white/10 pb-3">
-        <Link href="/view/Home">
-          <Home
-            size={22}
-            className="cursor-pointer hover:text-[--primary-theme] transition-colors"
-          />
-        </Link>
+      <SearchUI
+        placeholder="Search friends..."
+        value={search}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setSearch(e.target.value)
+        }
+      />
 
-        <HomeNavElements />
-      </div>
-
-      {/* Search */}
-      <div className="flex flex-col gap-2">
-        <p className="font-bold py-1 text-2xl text-[#14afa7]">
-          Chat Messages
-        </p>
-
-        <SearchUI
-          placeholder="Search friends..."
-          value={search}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSearch(e.target.value)
-          }
-        />
-      </div>
-
-      {/* Conversations */}
-      <div className="mt-2.5 flex flex-col gap-3 flex-1 overflow-y-auto">
+      <div className="mt-3 flex-1 overflow-y-auto flex flex-col gap-2">
         {loading ? (
           <p className="text-sm text-gray-500 px-2 py-3">
             Loading conversations...
@@ -142,9 +122,9 @@ export default function ChatSideBar() {
               <Link
                 href={`/view/Messages/${convo.user_id}`}
                 key={convo.user_id}
-                className="flex justify-between w-full rounded-lg px-2 py-3 hover:bg-[#383737] transition-colors"
+                className="flex justify-between rounded-lg px-2 py-3 hover:bg-[#383737] transition-colors"
               >
-                <div className="flex gap-3 items-start flex-1 min-w-0">
+                <div className="flex gap-3 flex-1 min-w-0">
                   <div className="relative shrink-0">
                     <UserProfileImage
                       url={
@@ -169,7 +149,7 @@ export default function ChatSideBar() {
                       </p>
 
                       {isOnline && (
-                        <span className="text-xs text-green-500 font-medium">
+                        <span className="text-xs text-green-500">
                           Online
                         </span>
                       )}
@@ -184,7 +164,7 @@ export default function ChatSideBar() {
                 </div>
 
                 {convo.last_message_at && (
-                  <p className="text-sm shrink-0 text-gray-300 font-bold">
+                  <p className="text-xs text-gray-400 shrink-0">
                     {timeAgo(convo.last_message_at)}
                   </p>
                 )}
