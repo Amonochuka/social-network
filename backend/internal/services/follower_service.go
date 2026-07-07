@@ -8,7 +8,7 @@ import (
 	"social-network/backend/internal/repositories/interfaces"
 
 	"github.com/google/uuid"
-	"fmt"
+	
 )
 
 type FollowerService struct {
@@ -120,7 +120,6 @@ func (s *FollowerService) AcceptFollowRequest(requestID, receiverID string) (*mo
     	return nil, errors.New("follow request not found")
 	}
 
-	fmt.Println("Request status:", req.Status)
 
 	if req.Status != models.StatusPending {
 		return nil, errors.New("follow request is no longer pending")
@@ -130,14 +129,10 @@ func (s *FollowerService) AcceptFollowRequest(requestID, receiverID string) (*mo
 		return nil, errors.New("unauthorized")
 	}
 
-	fmt.Println("Accepting request:", requestID)
-
 	if err := s.followerRepo.DeleteFollowRequest(requestID); err != nil {
-    	fmt.Println("Delete failed:", err)
     	return nil, errors.New("could not remove follow request")
 	}
 
-	fmt.Println("Delete succeeded")
 
 	if err := s.followerRepo.CreateFollower(req.SenderID, req.ReceiverID); err != nil {
 		return nil, errors.New("could not create follower relationship")
